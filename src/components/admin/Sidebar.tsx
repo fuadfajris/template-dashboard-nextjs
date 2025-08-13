@@ -4,7 +4,14 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
-import { ChevronDownIcon, HorizontaLDots } from "@/icons";
+import {
+  CalendarIcon,
+  ChevronDownIcon,
+  GridIcon,
+  GroupIcon,
+  HorizontaLDots,
+} from "@/icons";
+import { useUser } from "@/context/UserContext";
 // import {
 //   BoxCubeIcon,
 //   CalenderIcon,
@@ -27,48 +34,49 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   {
-    icon: null,
+    icon: <GridIcon />,
     name: "Menu",
-    subItems: [{ name: "Test Dashboard", path: "/dashboard" }],
+    subItems: [{ name: "Dashboard", path: "/dashboard" }],
   },
   {
-    icon: null,
-    name: "Event",
-    path: "/event",
+    icon: <CalendarIcon />,
+    name: "Events",
+    path: "/events",
   },
   {
-    icon: null,
-    name: "User Profile",
-    path: "/profile",
+    icon: <GroupIcon />,
+    name: "Guest",
+    path: "/guest",
   },
 ];
 
 const othersItems: NavItem[] = [
-  {
-    icon: null,
-    name: "Charts",
-    subItems: [
-      { name: "Line Chart", path: "/line-chart" },
-      { name: "Bar Chart", path: "/bar-chart" },
-    ],
-  },
-  {
-    icon: null,
-    name: "UI Elements",
-    subItems: [
-      { name: "Alerts", path: "/alerts" },
-      { name: "Avatar", path: "/avatars" },
-      { name: "Badge", path: "/badge" },
-      { name: "Buttons", path: "/buttons" },
-      { name: "Images", path: "/images" },
-      { name: "Videos", path: "/videos" },
-    ],
-  },
+  // {
+  //   icon: null,
+  //   name: "Charts",
+  //   subItems: [
+  //     { name: "Line Chart", path: "/line-chart" },
+  //     { name: "Bar Chart", path: "/bar-chart" },
+  //   ],
+  // },
+  // {
+  //   icon: null,
+  //   name: "UI Elements",
+  //   subItems: [
+  //     { name: "Alerts", path: "/alerts" },
+  //     { name: "Avatar", path: "/avatars" },
+  //     { name: "Badge", path: "/badge" },
+  //     { name: "Buttons", path: "/buttons" },
+  //     { name: "Images", path: "/images" },
+  //     { name: "Videos", path: "/videos" },
+  //   ],
+  // },
 ];
 
 const Sidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
+  const { user } = useUser();
 
   const renderMenuItems = (
     navItems: NavItem[],
@@ -274,28 +282,31 @@ const Sidebar: React.FC = () => {
         <Link href="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
-              <Image
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
-              <Image
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={150}
-                height={40}
-              />
+              {user?.logo && (
+                <div className="flex items-center">
+                  <Image src={user.logo} alt="Logo" width={70} height={70} />
+                  {/* <Image
+                    className="hidden dark:block"
+                    src={user.logo}
+                    width={100}
+                    height={100}
+                    alt="Logo"
+                  /> */}
+                  <span className="font-bold text-lg text-black dark:text-white">
+                    {user?.name}
+                  </span>
+                </div>
+              )}
             </>
           ) : (
-            <Image
-              src="/images/logo/logo-icon.svg"
-              alt="Logo"
-              width={32}
-              height={32}
-            />
+            <>
+              {user?.logo && (
+                <>
+                  <Image src={user.logo} alt="Logo" width={32} height={32} />
+                  <span className="font-bold text-sm">{user?.name}</span>
+                </>
+              )}
+            </>
           )}
         </Link>
       </div>
@@ -319,22 +330,24 @@ const Sidebar: React.FC = () => {
               {renderMenuItems(navItems, "main")}
             </div>
 
-            <div className="">
-              <h2
-                className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "justify-start"
-                }`}
-              >
-                {isExpanded || isHovered || isMobileOpen ? (
-                  "Others"
-                ) : (
-                  <HorizontaLDots />
-                )}
-              </h2>
-              {renderMenuItems(othersItems, "others")}
-            </div>
+            {othersItems.length > 0 && (
+              <div className="">
+                <h2
+                  className={`mb-4 text-xs uppercase flex leading-[20px] text-gray-400 ${
+                    !isExpanded && !isHovered
+                      ? "lg:justify-center"
+                      : "justify-start"
+                  }`}
+                >
+                  {isExpanded || isHovered || isMobileOpen ? (
+                    "Others"
+                  ) : (
+                    <HorizontaLDots />
+                  )}
+                </h2>
+                {renderMenuItems(othersItems, "others")}
+              </div>
+            )}
           </div>
         </nav>
       </div>
