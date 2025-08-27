@@ -3,7 +3,7 @@
 
 type EventDay = {
   date: string;
-  guests: { name: string; type: string; location: string; image?: string }[];
+  guests: { }[];
 };
 
 export default function ChartTab({
@@ -25,7 +25,7 @@ export default function ChartTab({
             activeTab === idx ? "bg-blue-500 text-white" : "bg-gray-200"
           }`}
         >
-          Hari {idx + 1} ({day.date})
+          Day {idx + 1} ({day.date})
         </button>
       ))}
     </div>

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
 import {
+  BoxIconLine,
   CalendarIcon,
   ChevronDownIcon,
   GridIcon,
@@ -33,10 +34,15 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
+  // {
+  //   icon: <GridIcon />,
+  //   name: "Menu",
+  //   subItems: [{ name: "Dashboard", path: "/dashboard" }],
+  // },
   {
     icon: <GridIcon />,
-    name: "Menu",
-    subItems: [{ name: "Dashboard", path: "/dashboard" }],
+    name: "Dashboard",
+    path: "/dashboard",
   },
   {
     icon: <CalendarIcon />,
@@ -47,6 +53,11 @@ const navItems: NavItem[] = [
     icon: <GroupIcon />,
     name: "Guest",
     path: "/guest",
+  },
+  {
+    icon: <BoxIconLine />,
+    name: "Order",
+    path: "/order",
   },
 ];
 
@@ -208,7 +219,6 @@ const Sidebar: React.FC = () => {
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
 
   useEffect(() => {
-    // Check if the current path matches any submenu item
     let submenuMatched = false;
     ["main", "others"].forEach((menuType) => {
       const items = menuType === "main" ? navItems : othersItems;
@@ -283,8 +293,8 @@ const Sidebar: React.FC = () => {
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               {user?.logo && (
-                <div className="flex items-center">
-                  <Image src={user.logo} alt="Logo" width={70} height={70} />
+                <div className="flex items-center gap-2">
+                  <Image src={user.logo} alt="Logo" width={50} height={50} className="rounded-full" />
                   {/* <Image
                     className="hidden dark:block"
                     src={user.logo}

@@ -21,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${outfit.className} dark:bg-gray-900`}>
+      <body className={`${outfit.className} dark:bg-gray-900 bg-gray-50`}>
         <UserProvider>
           <ThemeProvider>
             <SidebarProvider>{children}</SidebarProvider>
