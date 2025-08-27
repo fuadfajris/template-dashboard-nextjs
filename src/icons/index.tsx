@@ -4,6 +4,8 @@ import GroupIcon from "./group.svg";
 import MoreDotIcon from "./more-dot.svg";
 import GridIcon from "./grid.svg";
 import CalendarIcon from "./calendar.svg";
+import BoxIconLine from "./box-line.svg";
+import TicketIcon from "./ticket.svg";
 
 export {
   ChevronDownIcon,
@@ -12,4 +14,6 @@ export {
   MoreDotIcon,
   GridIcon,
   CalendarIcon,
+  BoxIconLine,
+  TicketIcon,
 };
