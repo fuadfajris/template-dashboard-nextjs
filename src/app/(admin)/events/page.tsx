@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/context/UserContext";
 import BasicTableOne from "@/components/table/BasicTableOne";
+import Link from "next/link";
 
 type EventItem = {
   id: string;
@@ -165,12 +166,20 @@ export default function EventPage() {
       action: isPast ? (
         "-"
       ) : (
-        <button
-          onClick={() => handleEditClick(evt)}
-          className="bg-blue-600 text-white px-3 py-1 rounded"
-        >
-          Edit
-        </button>
+        <div className="flex gap-2">
+          <Link
+            href={`/events/${evt.id}`}
+            className="bg-blue-600 text-white px-3 py-1 rounded"
+          >
+            Detail
+          </Link>
+          <button
+            onClick={() => handleEditClick(evt)}
+            className="bg-blue-600 text-white px-3 py-1 rounded"
+          >
+            Edit
+          </button>
+        </div>
       ),
     };
   });

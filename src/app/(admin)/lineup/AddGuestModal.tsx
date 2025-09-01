@@ -32,6 +32,7 @@ export default function AddGuestModal({
 
   // Fetch daftar guest untuk dropdown
   useEffect(() => {
+    if (!isOpen) return;
     const fetchGuests = async () => {
       const { data, error } = await supabase
         .from("guests")
@@ -42,6 +43,7 @@ export default function AddGuestModal({
   }, []);
 
   useEffect(() => {
+    if (!isOpen) return;
     const fetchEvent = async () => {
       const { data, error } = await supabase
         .from("events")
@@ -75,7 +77,7 @@ export default function AddGuestModal({
     ]);
 
     if (error) {
-      console.error("Failed to add guest:", error.message);
+      console.error("Failed to add lineup:", error.message);
       return;
     }
 
@@ -118,7 +120,7 @@ export default function AddGuestModal({
         onClick={() => setIsOpen(true)}
         className="px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700"
       >
-        + Add Guest
+        + Add Lineup
       </button>
 
       <Transition appear show={isOpen} as={Fragment}>
@@ -151,20 +153,20 @@ export default function AddGuestModal({
             >
               <Dialog.Panel className="w-full max-w-md p-6 bg-white rounded-2xl shadow-lg">
                 <Dialog.Title className="text-lg font-medium text-gray-900">
-                  Add Guest to Schedule
+                  Add Lineup to Schedule
                 </Dialog.Title>
 
-                {/* Dropdown Guest */}
+                {/* Dropdown Lineup */}
                 <div className="mt-4">
                   <label className="block mb-1 text-sm font-medium text-gray-700">
-                    Guest
+                    Lineup
                   </label>
                   <select
                     value={selectedGuest}
                     onChange={(e) => setSelectedGuest(e.target.value)}
                     className="w-full border rounded-lg p-2"
                   >
-                    <option value="">-- Select Guest --</option>
+                    <option value="">-- Select --</option>
                     {guests.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.name} ({g.email})

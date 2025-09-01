@@ -12,7 +12,7 @@ type Guest = {
   start_time: string;
   end_time: string;
   schedule_date: string;
-  schedule_id?: string; // id dari tabel guest_schedules
+  schedule_id?: string;
 };
 
 export default function EditGuestModal({
@@ -52,7 +52,7 @@ export default function EditGuestModal({
       .eq("id", form.schedule_id); // pastikan kamu kirim schedule_id ke sini
 
     if (error) {
-      console.error("Failed to update guest schedule:", error.message);
+      console.error("Failed to update lineup schedule:", error.message);
       return;
     }
 
@@ -63,12 +63,12 @@ export default function EditGuestModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">Edit Guest Schedule</h2>
+        <h2 className="text-lg font-semibold mb-4">Edit Lineup Schedule</h2>
 
-        {/* Guest info (non-editable) */}
+        {/* Lineup info (non-editable) */}
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-600">
-            Guest
+            Lineup
           </label>
           <input
             type="text"

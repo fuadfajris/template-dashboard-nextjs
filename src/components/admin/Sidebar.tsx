@@ -51,8 +51,8 @@ const navItems: NavItem[] = [
   },
   {
     icon: <GroupIcon />,
-    name: "Guest",
-    path: "/guest",
+    name: "Lineup",
+    path: "/lineup",
   },
   {
     icon: <BoxIconLine />,
@@ -216,7 +216,10 @@ const Sidebar: React.FC = () => {
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // const isActive = (path: string) => path === pathname;
-  const isActive = useCallback((path: string) => path === pathname, [pathname]);
+  const isActive = useCallback(
+    (path: string) => pathname === path || pathname.startsWith(`${path}/`),
+    [pathname]
+  );
 
   useEffect(() => {
     let submenuMatched = false;
@@ -294,7 +297,13 @@ const Sidebar: React.FC = () => {
             <>
               {user?.logo && (
                 <div className="flex items-center gap-2">
-                  <Image src={user.logo} alt="Logo" width={50} height={50} className="rounded-full" />
+                  <Image
+                    src={user.logo}
+                    alt="Logo"
+                    width={50}
+                    height={50}
+                    className="rounded-full"
+                  />
                   {/* <Image
                     className="hidden dark:block"
                     src={user.logo}
