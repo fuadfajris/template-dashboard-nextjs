@@ -69,7 +69,6 @@ export default function DashboardPage() {
     series: [],
   });
 
-  const [gender, setGender] = useState({ male: 0, female: 0 });
   const [checkinSeries, setCheckinSeries] = useState<number[]>([0, 0, 0]);
   const [countCheckin, setCountCheckin] = useState(0);
   const [salesChart, setSalesChart] = useState<number[]>([]);
@@ -264,12 +263,10 @@ export default function DashboardPage() {
           `
       id,
       event_id,
-      order_items (
-        ticket_details (
-          id,
-          event_date,
-          gender
-        )
+      ticket_details (
+        id,
+        event_date,
+        gender
       )
     `
         )
@@ -285,18 +282,16 @@ export default function DashboardPage() {
 
       // 5. Isi dari ticket_details
       data.forEach((order) => {
-        order.order_items?.forEach((item) => {
-          item.ticket_details?.forEach((td) => {
-            const date = new Date(td.event_date).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "short",
-            });
-
-            if (grouped[date]) {
-              if (td.gender?.toLowerCase() === "male") grouped[date].male++;
-              if (td.gender?.toLowerCase() === "female") grouped[date].female++;
-            }
+        order.ticket_details?.forEach((td) => {
+          const date = new Date(td.event_date).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
           });
+
+          if (grouped[date]) {
+            if (td.gender?.toLowerCase() === "male") grouped[date].male++;
+            if (td.gender?.toLowerCase() === "female") grouped[date].female++;
+          }
         });
       });
 
@@ -323,17 +318,17 @@ export default function DashboardPage() {
         .from("checkins")
         .select(
           `
-          checked_in_at,
-          ticket_details:ticket_details!inner(
-            gender,
-            order_items:order_items!inner(
-              orders:orders!inner(event_id)
-            )
-          )
-        `
+    checked_in_at,
+    ticket_details:ticket_details!inner(
+      gender,
+      orders:orders!inner(
+        event_id
+      )
+    )
+  `
         )
         .not("checked_in_at", "is", null)
-        .eq("ticket_details.order_items.orders.event_id", eventId);
+        .eq("ticket_details.orders.event_id", eventId);
 
       if (!error && data) {
         let maleCount = 0;
@@ -352,7 +347,6 @@ export default function DashboardPage() {
         const notCheckin =
           ticketsDashboard.totalTickets - (maleCount + femaleCount);
 
-        setGender({ male: maleCount, female: femaleCount });
         setCheckinSeries([maleCount, femaleCount, notCheckin]);
         setCountCheckin(maleCount + femaleCount);
       }

@@ -20,7 +20,8 @@ const templates = [
   {
     id: 1,
     name: "Modern Business",
-    description: "Clean and professional template perfect for business websites",
+    description:
+      "Clean and professional template perfect for business websites",
     category: "Business",
     preview:
       "/placeholder.svg?height=200&width=300&text=Modern+Business+Template",
@@ -94,6 +95,10 @@ export default function EventDetailPage() {
       return;
     }
     setEvent(data);
+
+    if (data.template) {
+      setActiveTemplate(data.template);
+    }
   };
 
   const handleSelectTemplate = (templateId: number) => {
@@ -101,12 +106,32 @@ export default function EventDetailPage() {
   };
 
   const handleApplyTemplate = async () => {
-    if (!selectedTemplate) return;
+    if (!selectedTemplate || !event) return;
 
     setIsApplying(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // update event di supabase
+    const { error } = await supabase
+      .from("events")
+      .update({
+        template: selectedTemplate, // simpan id template ke kolom template
+      })
+      .eq("id", event.id);
+
+    if (error) {
+      console.error("Failed to apply template:", error.message);
+      setIsApplying(false);
+      alert("Failed to apply template");
+      return;
+    }
+
+    // update local state
     setActiveTemplate(selectedTemplate);
     setIsApplying(false);
+
+    // update event state juga biar sinkron
+    setEvent({ ...event, template: selectedTemplate });
+
     alert("Template applied successfully!");
   };
 
@@ -143,9 +168,7 @@ export default function EventDetailPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div
             className={`bg-white dark:bg-gray-900 rounded-lg shadow-lg overflow-hidden flex flex-col ${
-              isFullscreen
-                ? "w-full h-full m-0"
-                : "w-11/12 max-w-4xl h-[80vh]"
+              isFullscreen ? "w-full h-full m-0" : "w-11/12 max-w-4xl h-[80vh]"
             }`}
           >
             {/* Header */}
