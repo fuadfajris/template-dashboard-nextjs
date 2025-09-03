@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,60 +16,24 @@ import {
   X,
 } from "lucide-react";
 
-const templates = [
-  {
-    id: 1,
-    name: "Modern Business",
-    description:
-      "Clean and professional template perfect for business websites",
-    category: "Business",
-    preview:
-      "/placeholder.svg?height=200&width=300&text=Modern+Business+Template",
-    features: [
-      "Responsive Design",
-      "Contact Forms",
-      "Service Sections",
-      "Team Pages",
-    ],
-    colors: ["#2563eb", "#f8fafc", "#1e293b"],
-  },
-  {
-    id: 2,
-    name: "Creative Portfolio",
-    description: "Stunning portfolio template for designers and creatives",
-    category: "Portfolio",
-    preview:
-      "/placeholder.svg?height=200&width=300&text=Creative+Portfolio+Template",
-    features: [
-      "Image Galleries",
-      "Project Showcase",
-      "About Section",
-      "Contact Form",
-    ],
-    colors: ["#7c3aed", "#fbbf24", "#111827"],
-  },
-  {
-    id: 3,
-    name: "E-commerce Store",
-    description: "Complete online store template with product catalogs",
-    category: "E-commerce",
-    preview:
-      "/placeholder.svg?height=200&width=300&text=E-commerce+Store+Template",
-    features: [
-      "Product Grid",
-      "Shopping Cart",
-      "Checkout Pages",
-      "User Accounts",
-    ],
-    colors: ["#059669", "#f3f4f6", "#374151"],
-  },
-];
+type Template = {
+  id: number;
+  title: string;
+  category: string;
+  thumbnail: string | null;
+  description: string | null;
+  url: string | null;
+  feature_id: number | null;
+  features: string[];
+};
 
 export default function EventDetailPage() {
+  const didFetch = useRef(false);
   const { id } = useParams();
   const [event, setEvent] = useState<any>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
-  const [activeTemplate, setActiveTemplate] = useState<number | null>(1);
+  const [activeTemplate, setActiveTemplate] = useState<number | null>(null);
   const [isApplying, setIsApplying] = useState(false);
 
   // preview modal state
@@ -77,11 +41,14 @@ export default function EventDetailPage() {
   const [previewTemplate, setPreviewTemplate] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // fetch data event & template
   useEffect(() => {
-    if (id) {
-      fetchEvent(id as string);
-    }
-  }, [id]);
+  if (!didFetch.current && id) {
+    fetchEvent(id as string);
+    fetchTemplates();
+    didFetch.current = true;
+  }
+}, [id]);
 
   const fetchEvent = async (eventId: string) => {
     const { data, error } = await supabase
@@ -96,9 +63,41 @@ export default function EventDetailPage() {
     }
     setEvent(data);
 
-    if (data.template) {
-      setActiveTemplate(data.template);
+    if (data.template_id) {
+      setActiveTemplate(data.template_id);
     }
+  };
+
+  const fetchTemplates = async () => {
+    const { data, error } = await supabase
+      .from("templates")
+      .select(
+        `
+    id,
+    title,
+    category,
+    thumbnail,
+    description,
+    url,
+    features:features(
+      feature_name
+    )
+  `
+      )
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error("Failed to fetch templates:", error.message);
+      return;
+    }
+
+    // hanya ubah mapping features
+    const mapped = (data || []).map((t: any) => ({
+      ...t,
+      features: t.features ? t.features.map((f: any) => f.feature_name) : [],
+    }));
+
+    setTemplates(mapped);
   };
 
   const handleSelectTemplate = (templateId: number) => {
@@ -110,11 +109,10 @@ export default function EventDetailPage() {
 
     setIsApplying(true);
 
-    // update event di supabase
     const { error } = await supabase
       .from("events")
       .update({
-        template: selectedTemplate, // simpan id template ke kolom template
+        template_id: selectedTemplate,
       })
       .eq("id", event.id);
 
@@ -125,13 +123,9 @@ export default function EventDetailPage() {
       return;
     }
 
-    // update local state
     setActiveTemplate(selectedTemplate);
     setIsApplying(false);
-
-    // update event state juga biar sinkron
-    setEvent({ ...event, template: selectedTemplate });
-
+    setEvent({ ...event, template_id: selectedTemplate });
     alert("Template applied successfully!");
   };
 
@@ -155,10 +149,10 @@ export default function EventDetailPage() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-semibold text-foreground mb-2 text-gray-800 dark:text-white/90">
+        <h2 className="text-2xl font-semibold mb-2 text-gray-800 dark:text-white/90">
           Website Templates
         </h2>
-        <p className="text-muted-foreground text-gray-800 dark:text-white/90">
+        <p className="text-gray-600 dark:text-gray-400">
           Choose from our collection of professional website templates.
         </p>
       </div>
@@ -174,7 +168,8 @@ export default function EventDetailPage() {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Preview: {templates.find((t) => t.id === previewTemplate)?.name}
+                Preview:{" "}
+                {templates.find((t) => t.id === previewTemplate)?.title}
               </h3>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={toggleFullscreen}>
@@ -193,7 +188,10 @@ export default function EventDetailPage() {
             {/* Body */}
             <div className="flex-1 bg-background">
               <iframe
-                src="http://localhost:3000"
+                src={
+                  templates.find((t) => t.id === previewTemplate)?.url ||
+                  "http://localhost:3000"
+                }
                 className="w-full h-full"
                 title="Template Preview"
                 frameBorder="0"
@@ -237,8 +235,8 @@ export default function EventDetailPage() {
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <CardTitle className="text-lg flex items-center gap-2 text-foreground">
-                    {template.name}
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    {template.title}
                     {activeTemplate === template.id && (
                       <Badge
                         variant="default"
@@ -268,8 +266,8 @@ export default function EventDetailPage() {
             <CardContent className="space-y-4">
               <div className="aspect-video bg-muted rounded-lg overflow-hidden">
                 <img
-                  src={template.preview || "/placeholder.svg"}
-                  alt={`${template.name} preview`}
+                  src={template.thumbnail || "/placeholder.svg"}
+                  alt={`${template.title} preview`}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -277,21 +275,6 @@ export default function EventDetailPage() {
               <p className="text-sm text-muted-foreground">
                 {template.description}
               </p>
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-foreground">
-                  Color Palette
-                </label>
-                <div className="flex gap-1">
-                  {template.colors.map((color, index) => (
-                    <div
-                      key={index}
-                      className="w-6 h-6 rounded-full border border-border"
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-              </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-medium text-foreground">
@@ -321,9 +304,9 @@ export default function EventDetailPage() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-foreground">
+                <h3 className="font-semibold">
                   Apply "
-                  {templates.find((t) => t.id === selectedTemplate)?.name}"
+                  {templates.find((t) => t.id === selectedTemplate)?.title}"
                   Template
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">

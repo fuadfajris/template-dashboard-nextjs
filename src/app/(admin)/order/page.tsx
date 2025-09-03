@@ -14,17 +14,14 @@ type EventOption = { value: string; label: string };
 type Order = {
   id: string;
   order_date: string;
+  status: string;
+  quantity: number;
+  price: number;
   user: {
     name: string;
     email: string;
     phone: string;
   };
-  order_item: {
-    quantity: number;
-    price: number;
-  }[];
-  totalPrice: number;
-  totalQuantity: number;
 };
 
 type TicketDetailRow = {
@@ -81,104 +78,30 @@ export default function OrderPage() {
     fetchEvents();
   }, [user]);
 
-  // Fungsi fetch orders dari DB
-  // const fetchOrder = async (search?: string) => {
-  //   if (!eventId) return;
-  //   setLoadingOrders(true);
-
-  //   const { data, error } = await supabase
-  //     .from("orders")
-  //     .select(
-  //       `
-  //       id,
-  //       order_date,
-  //       user:users (
-  //         name,
-  //         email,
-  //         phone
-  //       ),
-  //       order_items!inner (
-  //         order_id,
-  //         quantity,
-  //         price
-  //       )
-  //     `
-  //     )
-  //     .eq("event_id", eventId)
-  //     .order("order_date", { ascending: true });
-
-  //   setLoadingOrders(false);
-
-  //   if (error) {
-  //     console.error("Supabase error:", error.message);
-  //     return;
-  //   }
-
-  //   // Filter search di frontend (karena nested select tidak bisa di query)
-  //   let filteredData = data;
-  //   if (search && search.trim() !== "") {
-  //     const searchLower = search.toLowerCase();
-  //     filteredData = (data || []).filter((o: any) => {
-  //       const name = o.user?.name?.toLowerCase() ?? "";
-  //       const email = o.user?.email?.toLowerCase() ?? "";
-  //       const phone = o.user?.phone?.toLowerCase() ?? "";
-  //       return (
-  //         name.includes(searchLower) ||
-  //         email.includes(searchLower) ||
-  //         phone.includes(searchLower)
-  //       );
-  //     });
-  //   }
-
-  //   // Hitung total quantity & total price
-  //   const aggregated = (filteredData || []).map((order: any) => {
-  //     const totalQuantity = order.order_items.reduce(
-  //       (acc: number, item: any) => acc + item.quantity,
-  //       0
-  //     );
-  //     const totalPrice = order.order_items.reduce(
-  //       (acc: number, item: any) => acc + item.price,
-  //       0
-  //     );
-  //     return { ...order, totalQuantity, totalPrice };
-  //   });
-
-  //   setOrders(aggregated);
-  // };
   const fetchOrder = async (search?: string) => {
     if (!eventId) return;
     setLoadingOrders(true);
 
-    // Siapkan filter search di DB
-    let orFilter: string | undefined;
-    if (search && search.trim() !== "") {
-      const term = `%${search.trim()}%`;
-      orFilter = `user_name.ilike.${term},user_email.ilike.${term},user_phone.ilike.${term}`;
-    }
-
-    // Buat query ke view
-    let query = supabase
-      .from("order_with_user")
+    // Ambil semua orders dengan relasi users
+    let { data, error } = await supabase
+      .from("orders")
       .select(
         `
-      id,
-      order_date,
-      user_name,
-      user_email,
-      user_phone,
-      order_id:order_items!inner(
+        id,
+        order_date,
+        status,
         quantity,
-        price
-      )
-    `
+        price,
+        users (
+          name,
+          email,
+          phone
+        )
+      `
       )
       .eq("event_id", eventId)
       .order("order_date", { ascending: true });
 
-    // Tambahkan .or() hanya jika search ada
-    if (orFilter) query = query.or(orFilter);
-
-    const { data, error } = await query;
     setLoadingOrders(false);
 
     if (error) {
@@ -186,31 +109,34 @@ export default function OrderPage() {
       return;
     }
 
-    // Hitung total quantity & total price
-    const aggregated = (data || []).map((order: any) => {
-      const totalQuantity = order.order_id.reduce(
-        (acc: number, item: any) => acc + item.quantity,
-        0
-      );
-      const totalPrice = order.order_id.reduce(
-        (acc: number, item: any) => acc + item.price,
-        0
-      );
-
-      return {
-        id: order.id,
-        order_date: order.order_date,
-        totalQuantity,
-        totalPrice,
+    if (data) {
+      // Mapping hasil orders
+      let mapped: Order[] = data.map((o: any) => ({
+        id: o.id,
+        order_date: o.order_date,
+        status: o.status,
+        quantity: o.quantity,
+        price: o.price,
         user: {
-          name: order.user_name,
-          email: order.user_email,
-          phone: order.user_phone,
+          name: o.users?.name ?? "-",
+          email: o.users?.email ?? "-",
+          phone: o.users?.phone ?? "-",
         },
-      };
-    });
+      }));
 
-    setOrders(aggregated);
+      // 🔍 Filtering di client-side
+      if (search && search.trim() !== "") {
+        const term = search.trim().toLowerCase();
+        mapped = mapped.filter(
+          (o) =>
+            o.user.name.toLowerCase().includes(term) ||
+            o.user.email.toLowerCase().includes(term) ||
+            o.user.phone.toLowerCase().includes(term)
+        );
+      }
+
+      setOrders(mapped);
+    }
   };
 
   // Auto fetch ketika event berubah
@@ -224,7 +150,6 @@ export default function OrderPage() {
     setLoadingDetail(true);
     setDetailRows([]);
 
-    // Ambil dari ticket_details, join ke order_items (FK: order_item_id) dan tickets & checkins
     const { data, error } = await supabase
       .from("ticket_details")
       .select(
@@ -235,9 +160,8 @@ export default function OrderPage() {
         phone,
         gender,
         ticket_status,
-        order_items:order_items!inner(
+        order:orders!inner(
           id,
-          order_id,
           tickets:ticket_id(
             ticket_type,
             price
@@ -250,7 +174,7 @@ export default function OrderPage() {
       `
       )
       // filter berdasarkan order id yang sedang dipilih
-      .eq("order_items.order_id", order.id);
+      .eq("order.id", order.id);
 
     if (error) {
       console.error("Supabase detail error:", error.message);
@@ -260,10 +184,7 @@ export default function OrderPage() {
 
     // Rapikan bentuk data untuk tabel
     const rows: TicketDetailRow[] = (data || []).map((td: any) => {
-      // relasi order_items adalah 1-1 (karena ticket_details.order_item_id)
-      const oi = Array.isArray(td.order_items)
-        ? td.order_items[0]
-        : td.order_items;
+      const oi = Array.isArray(td.order) ? td.order[0] : td.order;
       const ticketType =
         oi?.tickets?.ticket_type ??
         (Array.isArray(oi?.tickets) ? oi?.tickets?.[0]?.ticket_type : "-");
@@ -296,8 +217,8 @@ export default function OrderPage() {
 
     return {
       categories: orders.map((o) => o.order_date.split("T")[0]),
-      qty: orders.map((o) => Math.floor(o.totalQuantity ?? 0)),
-      price: orders.map((o) => o.totalPrice ?? 0),
+      qty: orders.map((o) => Math.floor(o.quantity ?? 0)),
+      price: orders.map((o) => o.price ?? 0),
     };
   }, [orders]);
 
@@ -388,7 +309,7 @@ export default function OrderPage() {
                   Total Quantity
                 </p>
                 <p className="text-xl font-bold text-[#465FFF]">
-                  {orders.reduce((acc, o) => acc + o.totalQuantity, 0)}
+                  {orders.reduce((acc, o) => acc + o.quantity, 0)}
                 </p>
               </div>
 
@@ -399,7 +320,7 @@ export default function OrderPage() {
                 <p className="text-xl font-bold text-[#2ECC71]">
                   Rp{" "}
                   {orders
-                    .reduce((acc, o) => acc + o.totalPrice, 0)
+                    .reduce((acc, o) => acc + o.price, 0)
                     .toLocaleString("id-ID")}
                 </p>
               </div>
@@ -460,8 +381,8 @@ export default function OrderPage() {
               name: o.user?.name ?? "-",
               email: o.user?.email ?? "-",
               phone: o.user?.phone ?? "-",
-              quantity: o.totalQuantity ?? "-",
-              price: o.totalPrice ?? "-",
+              quantity: o?.quantity ?? "-",
+              price: o?.price ?? "-",
               date: o.order_date?.split("T")[0] ?? "-",
               action: (
                 <button
