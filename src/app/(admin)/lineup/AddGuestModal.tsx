@@ -40,7 +40,7 @@ export default function AddGuestModal({
       if (!error && data) setGuests(data);
     };
     fetchGuests();
-  }, []);
+  }, [!isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -169,7 +169,7 @@ export default function AddGuestModal({
                     <option value="">-- Select --</option>
                     {guests.map((g) => (
                       <option key={g.id} value={g.id}>
-                        {g.name} ({g.email})
+                        {g.name}
                       </option>
                     ))}
                   </select>

@@ -72,7 +72,7 @@ export default function EditGuestModal({
           </label>
           <input
             type="text"
-            value={`${form.name} (${form.email})`}
+            value={`${form.name}`}
             disabled
             className="w-full border p-2 rounded bg-gray-100 text-gray-600"
           />

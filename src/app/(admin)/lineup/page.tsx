@@ -208,22 +208,22 @@ export default function GuestPage() {
               }))}
             />
 
-            {/* <EditGuestModal
+            <EditGuestModal
               guest={selectedGuest}
               open={editOpen}
               onClose={() => setEditOpen(false)}
               onUpdated={() => handleSelectChange(eventId)} // refresh tabel
-            /> */}
+            />
           </div>
         </>
       ) : (
         <>
           {eventId && (
             <div className="px-6 pb-6">
-              {/* <AddGuestModal
+              <AddGuestModal
                 eventId={eventId}
                 onAdded={() => handleSelectChange(eventId)}
-              /> */}
+              />
             </div>
           )}
           <div className="px-6 py-5 text-center text-gray-500">

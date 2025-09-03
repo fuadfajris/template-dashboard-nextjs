@@ -48,8 +48,9 @@ type TicketsDashboard = {
 
 type TicketItem = {
   quantity: number;
+  status: string;
+  event_id: number;
   ticket: { ticket_type: string };
-  order: { status: string; event_id: number };
 };
 
 export default function DashboardPage() {
@@ -180,16 +181,17 @@ export default function DashboardPage() {
 
     const fetchTicket = async () => {
       const { data, error } = await supabase
-        .from("order_items")
+        .from("orders")
         .select(
           `
             quantity,
-            ticket: tickets ( ticket_type ),
-            order: orders!inner ( status, event_id )
+            status,
+            event_id,
+            ticket: tickets ( ticket_type )
           `
         )
-        .eq("order.status", "paid")
-        .eq("order.event_id", eventId)
+        .eq("status", "paid")
+        .eq("event_id", eventId)
         .returns<TicketItem[]>();
 
       if (!error && data) {
@@ -318,14 +320,14 @@ export default function DashboardPage() {
         .from("checkins")
         .select(
           `
-    checked_in_at,
-    ticket_details:ticket_details!inner(
-      gender,
-      orders:orders!inner(
-        event_id
-      )
-    )
-  `
+          checked_in_at,
+          ticket_details:ticket_details!inner(
+            gender,
+            orders:orders!inner(
+              event_id
+            )
+          )
+        `
         )
         .not("checked_in_at", "is", null)
         .eq("ticket_details.orders.event_id", eventId);
