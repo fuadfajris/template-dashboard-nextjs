@@ -51,9 +51,10 @@ export default function GuestPage() {
 
       const { data, error } = await supabase
         .from("events")
-        .select("id, name")        
+        .select("id, name")
         .eq("status", true)
-        .eq("merchant_id", user.id);
+        .eq("merchant_id", user.id)
+        .order("id", { ascending: true });
 
       if (error) {
         console.error("Failed to fetch events:", error.message);
@@ -66,11 +67,16 @@ export default function GuestPage() {
           label: event.name,
         }));
         setEvents(formattedEvents);
+        setEventId(data.length !== 0 ? data[0].id : "");
       }
     };
 
     fetchEvents();
   }, [user]);
+
+  useEffect(() => {
+    eventId && handleSelectChange(eventId);
+  }, [eventId]);
 
   const handleSelectChange = async (eventId: string) => {
     setEventId(eventId);
@@ -143,6 +149,7 @@ export default function GuestPage() {
         <div className="relative">
           <Select
             options={events}
+            defaultValue={eventId}
             placeholder="Select Option"
             onChange={handleSelectChange}
             className="dark:bg-dark-900"

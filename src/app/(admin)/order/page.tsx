@@ -60,7 +60,8 @@ export default function OrderPage() {
       const { data, error } = await supabase
         .from("events")
         .select("id, name")
-        .eq("merchant_id", user.id);
+        .eq("merchant_id", user.id)
+        .order("id", { ascending: true });
 
       if (error) {
         console.error("Error fetching events:", error.message);
@@ -73,6 +74,7 @@ export default function OrderPage() {
           label: e.name,
         }))
       );
+      setEventId(data.length !== 0 ? data[0].id : "");
     };
 
     fetchEvents();
@@ -270,6 +272,7 @@ export default function OrderPage() {
           <div className="relative">
             <Select
               options={eventList}
+              defaultValue={eventId}
               placeholder="Select Option"
               onChange={setEventId}
               className="dark:bg-dark-900"

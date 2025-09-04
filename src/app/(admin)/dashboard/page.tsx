@@ -96,10 +96,12 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from("events")
         .select("id, name")
-        .eq("merchant_id", user.id);
+        .eq("merchant_id", user.id)
+        .order("id", { ascending: true });
 
       if (!error && data) {
         setEventList(data.map((e) => ({ value: e.id, label: e.name })));
+        setEventId(data.length !== 0 ? data[0].id : "");
       }
     };
     fetchEvents();
@@ -132,7 +134,9 @@ export default function DashboardPage() {
         .limit(5);
 
       if (!error && data) {
-        const eventDate = new Date(data[0].event.start_date);
+        const eventDate = data.length
+          ? new Date(data[0].event.start_date)
+          : new Date();
         const eventMonth = eventDate.getMonth();
         const eventYear = eventDate.getFullYear();
 
@@ -417,6 +421,7 @@ export default function DashboardPage() {
           <div className="relative">
             <Select
               options={eventList}
+              defaultValue={eventId}
               placeholder="Select Option"
               onChange={setEventId}
               className="dark:bg-dark-900"
