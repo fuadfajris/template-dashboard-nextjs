@@ -41,6 +41,8 @@ export default function EventPage() {
   const [editEvent, setEditEvent] = useState<EventItem | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [originalEvent, setOriginalEvent] = useState<EventItem | null>(null);
+  const [isChanged, setIsChanged] = useState(false);
 
   useEffect(() => {
     document.title = "Event - MyApp";
@@ -59,6 +61,24 @@ export default function EventPage() {
     setPreview(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);
+
+  useEffect(() => {
+    if (!editEvent || !originalEvent) return;
+
+    const hasChanged =
+      editEvent.name !== originalEvent.name ||
+      editEvent.description !== originalEvent.description ||
+      editEvent.location !== originalEvent.location ||
+      editEvent.start_date?.split("T")[0] !==
+        originalEvent.start_date?.split("T")[0] ||
+      editEvent.end_date?.split("T")[0] !==
+        originalEvent.end_date?.split("T")[0] ||
+      editEvent.capacity !== originalEvent.capacity ||
+      editEvent.status !== originalEvent.status ||
+      !!file; // ada file baru → dianggap berubah
+
+    setIsChanged(hasChanged);
+  }, [editEvent, originalEvent, file]);
 
   const fetchEvents = async (search?: string) => {
     if (!user?.id) return;
@@ -92,20 +112,34 @@ export default function EventPage() {
 
   const handleEditClick = (evt: EventItem) => {
     setPreview(evt.image_venue || null);
-    setEditEvent(evt);
+    setEditEvent({ ...evt });
+    setOriginalEvent({ ...evt }); // ✅ simpan data awal
     setShowEditModal(true);
   };
 
   const handleAddEvent = async () => {
-    if (!user?.id || !newEvent.name.trim()) return;
+    if (!user?.id) return;
+
+    // ✅ Validasi data wajib
+    if (
+      !newEvent.name.trim() ||
+      !newEvent.description.trim() ||
+      !newEvent.location.trim() ||
+      !newEvent.start_date ||
+      !newEvent.end_date ||
+      !newEvent.capacity
+    ) {
+      alert("Semua field wajib diisi!");
+      return;
+    }
 
     let imageUrl: string | null = null;
 
-    // kalau ada file gambar → upload dulu
+    // upload file jika ada
     if (file) {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("folder", "event"); // 👉 folder dinamis
+      formData.append("folder", "event");
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -126,13 +160,13 @@ export default function EventPage() {
       {
         merchant_id: user.id,
         name: newEvent.name,
-        description: newEvent.description || null,
-        location: newEvent.location || null,
-        start_date: newEvent.start_date || null,
-        end_date: newEvent.end_date || null,
-        capacity: newEvent.capacity ? parseInt(newEvent.capacity) : null,
+        description: newEvent.description,
+        location: newEvent.location,
+        start_date: newEvent.start_date,
+        end_date: newEvent.end_date,
+        capacity: parseInt(newEvent.capacity),
         status: newEvent.status,
-        image_venue: imageUrl, // ✅ simpan ke DB
+        image_venue: imageUrl,
       },
     ]);
 
@@ -161,15 +195,42 @@ export default function EventPage() {
   const handleUpdateEvent = async () => {
     if (!editEvent) return;
 
+    // ✅ Validasi field kosong
+    if (
+      !editEvent.name.trim() ||
+      !editEvent.description?.trim() ||
+      !editEvent.location?.trim() ||
+      !editEvent.start_date ||
+      !editEvent.end_date ||
+      !editEvent.capacity
+    ) {
+      alert("Semua field wajib diisi!");
+      return;
+    }
+
+    // ✅ Cek apakah data berubah
+    const original = events.find((e) => e.id === editEvent.id);
+    if (original) {
+      const isSame =
+        original.name === editEvent.name &&
+        original.description === editEvent.description &&
+        original.location === editEvent.location &&
+        original.start_date?.split("T")[0] === editEvent.start_date &&
+        original.end_date?.split("T")[0] === editEvent.end_date &&
+        original.capacity === editEvent.capacity &&
+        original.status === editEvent.status &&
+        !file; // gambar juga sama
+
+      if (isSame) {
+        alert("Tidak ada perubahan data.");
+        return;
+      }
+    }
+
     let imageUrl = editEvent.image_venue;
 
-    // kalau ada file baru → hapus lama + upload baru
     if (file) {
-      // hapus file lama
-      if (
-        editEvent.image_venue &&
-        editEvent.image_venue.startsWith("/uploads/event/")
-      ) {
+      if (editEvent.image_venue?.startsWith("/uploads/event/")) {
         await fetch("/api/delete-file", {
           method: "POST",
           body: JSON.stringify({ filePath: editEvent.image_venue }),
@@ -177,7 +238,6 @@ export default function EventPage() {
         });
       }
 
-      // upload file baru
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "event");
@@ -186,7 +246,6 @@ export default function EventPage() {
         method: "POST",
         body: formData,
       });
-
       if (!res.ok) {
         const errRes = await res.json();
         alert(errRes.error || "Upload failed");
@@ -207,7 +266,7 @@ export default function EventPage() {
         end_date: editEvent.end_date,
         capacity: editEvent.capacity,
         status: editEvent.status,
-        image_venue: imageUrl, // ✅ update logo baru
+        image_venue: imageUrl,
       })
       .eq("id", editEvent.id);
 
@@ -344,6 +403,7 @@ export default function EventPage() {
               type="date"
               className="w-full border p-2 mb-2"
               value={newEvent.start_date}
+              min={new Date().toISOString().split("T")[0]} // ✅ minimal hari ini
               onChange={(e) =>
                 setNewEvent({ ...newEvent, start_date: e.target.value })
               }
@@ -352,6 +412,9 @@ export default function EventPage() {
               type="date"
               className="w-full border p-2 mb-2"
               value={newEvent.end_date}
+              min={
+                newEvent.start_date || new Date().toISOString().split("T")[0]
+              } // ✅ minimal sama dengan start_date
               onChange={(e) =>
                 setNewEvent({ ...newEvent, end_date: e.target.value })
               }
@@ -457,6 +520,7 @@ export default function EventPage() {
               type="date"
               className="w-full border p-2 mb-2"
               value={editEvent.start_date?.split("T")[0] || ""}
+              min={new Date().toISOString().split("T")[0]}
               onChange={(e) =>
                 setEditEvent({ ...editEvent, start_date: e.target.value })
               }
@@ -465,6 +529,10 @@ export default function EventPage() {
               type="date"
               className="w-full border p-2 mb-2"
               value={editEvent.end_date?.split("T")[0] || ""}
+              min={
+                editEvent.start_date?.split("T")[0] ||
+                new Date().toISOString().split("T")[0]
+              }
               onChange={(e) =>
                 setEditEvent({ ...editEvent, end_date: e.target.value })
               }
@@ -531,8 +599,13 @@ export default function EventPage() {
                 Cancel
               </button>
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded"
+                className={`px-4 py-2 rounded text-white ${
+                  isChanged
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-gray-400 cursor-not-allowed"
+                }`}
                 onClick={handleUpdateEvent}
+                disabled={!isChanged} // ✅ disable kalau belum ada perubahan
               >
                 Update
               </button>

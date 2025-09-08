@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Guest = {
@@ -16,23 +16,55 @@ type Guest = {
 };
 
 export default function EditGuestModal({
+  eventId,
   guest,
   open,
   onClose,
   onUpdated,
 }: {
+  eventId: String | null;
   guest: Guest | null;
   open: boolean;
   onClose: () => void;
   onUpdated: () => void;
 }) {
   const [form, setForm] = useState<Guest | null>(guest);
+  const [eventRange, setEventRange] = useState<{
+    start: string;
+    end: string;
+  } | null>(null);
 
   useEffect(() => {
+    if (!open || !guest) return;
     setForm(guest);
-  }, [guest]);
 
-  if (!open || !form) return null;
+    // fetch event range kalau ada event_id
+    const fetchEventRange = async () => {
+      if (!eventId) return;
+      console.log("guest test");
+
+      const { data, error } = await supabase
+        .from("events")
+        .select("start_date, end_date")
+        .eq("id", eventId)
+        .single();
+
+      if (error) {
+        console.error("Failed to fetch event range:", error.message);
+        return;
+      }
+
+      if (data) {
+        setEventRange({
+          start: data.start_date,
+          end: data.end_date,
+        });
+      }
+    };
+    console.log("open : ", open)
+
+    fetchEventRange();
+  }, [guest, open]);
 
   const handleChange = (field: keyof Guest, value: string) => {
     setForm((prev) => (prev ? { ...prev, [field]: value } : prev));
@@ -49,7 +81,7 @@ export default function EditGuestModal({
         end_time: form.end_time,
         stage: form.stage,
       })
-      .eq("id", form.schedule_id); // pastikan kamu kirim schedule_id ke sini
+      .eq("id", form.schedule_id);
 
     if (error) {
       console.error("Failed to update lineup schedule:", error.message);
@@ -59,6 +91,27 @@ export default function EditGuestModal({
     onUpdated();
     onClose();
   };
+
+  const isChanged = useMemo(() => {
+    if (!guest || !form) return false;
+    return (
+      guest.schedule_date !== form.schedule_date ||
+      guest.start_time !== form.start_time ||
+      guest.end_time !== form.end_time ||
+      guest.stage !== form.stage
+    );
+  }, [guest, form]);
+
+  const formatDate = (date: string | undefined) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  if (!open || !form) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -85,7 +138,9 @@ export default function EditGuestModal({
           </label>
           <input
             type="date"
-            value={form.schedule_date}
+            value={form?.schedule_date}
+            min={formatDate(eventRange?.start)}
+            max={formatDate(eventRange?.end)}
             onChange={(e) => handleChange("schedule_date", e.target.value)}
             className="w-full border p-2 rounded"
           />
@@ -112,7 +167,6 @@ export default function EditGuestModal({
               type="time"
               value={form.end_time}
               onChange={(e) => handleChange("end_time", e.target.value)}
-              onBlur={(e) => e.target.blur()}
               className="w-full border p-2 rounded"
             />
           </div>
@@ -141,7 +195,12 @@ export default function EditGuestModal({
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600"
+            disabled={!isChanged}
+            className={`px-4 py-2 rounded text-white ${
+              !isChanged
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-500 hover:bg-blue-600"
+            }`}
           >
             Save
           </button>

@@ -60,7 +60,7 @@ export default function AddGuestModal({
     };
 
     if (eventId) fetchEvent();
-  }, [eventId]);
+  }, [eventId, !isOpen]);
 
   const handleSubmit = async () => {
     if (!selectedGuest || !date || !start || !end) return;

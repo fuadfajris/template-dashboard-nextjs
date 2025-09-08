@@ -127,12 +127,12 @@ export default function GuestPage() {
       });
     });
 
-    const daysArray: DaySchedule[] = Object.entries(daysMap).map(
-      ([date, guests]) => ({
+    const daysArray: DaySchedule[] = Object.entries(daysMap)
+      .map(([date, guests]) => ({
         date,
         guests,
-      })
-    );
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     setEventDays(daysArray);
   };
@@ -140,6 +140,23 @@ export default function GuestPage() {
   const handleEditClick = (guest: any) => {
     setSelectedGuest(guest);
     setEditOpen(true);
+  };
+
+  const handleDelete = async (guest: Guest) => {
+    if (!confirm(`Are you sure you want to delete ${guest.name}?`)) return;
+
+    const { error } = await supabase
+      .from("guest_schedules")
+      .delete()
+      .eq("id", guest.schedule_id);
+
+    if (error) {
+      console.error("Failed to delete schedule:", error.message);
+      return;
+    }
+
+    // refresh data
+    handleSelectChange(eventId);
   };
 
   return (
@@ -204,18 +221,19 @@ export default function GuestPage() {
                     </button>
 
                     {/* Delete button */}
-                    {/* <button
-                      onClick={() => console.log("Delete", g)}
+                    <button
+                      onClick={() => handleDelete(g)}
                       className="px-2 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600"
                     >
                       Delete
-                    </button> */}
+                    </button>
                   </div>
                 ),
               }))}
             />
 
             <EditGuestModal
+              eventId={eventId}
               guest={selectedGuest}
               open={editOpen}
               onClose={() => setEditOpen(false)}
