@@ -65,9 +65,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!merchant) return;
     const changed =
-      name !== merchant.name ||
-      email !== merchant.email ||
-      file !== null;
+      name !== merchant.name || email !== merchant.email || file !== null;
     setIsDirty(changed);
   }, [name, email, file, merchant]);
 
@@ -77,38 +75,43 @@ export default function ProfilePage() {
     setErr(null);
 
     let logoUrl = merchant.logo;
-    let newPath = merchant.logo_path;
 
-    // upload file baru
     if (file) {
-      if (merchant.logo_path) {
-          await supabase.storage
-            .from("merchant-logos")
-            .remove([merchant.logo_path]);
-        }
+      // 1. Hapus logo lama kalau ada
+      if (merchant.logo && merchant.logo.startsWith("/uploads/merchant/")) {
+        await fetch("/api/delete-file", {
+          method: "POST",
+          body: JSON.stringify({ filePath: merchant.logo }),
+          headers: { "Content-Type": "application/json" },
+        });
+      }
 
-        // 2. Generate nama file baru
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${merchant.id}-${Date.now()}.${fileExt}`;
-        newPath = `logos/${fileName}`;
+      // 2. Upload logo baru
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "merchant");
 
-        // 3. Upload file baru
-        const { error: uploadError } = await supabase.storage
-          .from("merchant-logos")
-          .upload(newPath, file, { upsert: true });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-        if (uploadError) {
-          throw uploadError;
-        }
+      if (!res.ok) {
+        const errRes = await res.json();
+        setErr(errRes.error || "Upload failed");
+        setLoading(false);
+        return;
+      }
 
-      logoUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/merchant-logos/${newPath}`;
+      const { url } = await res.json();
+      logoUrl = url; 
     }
 
+    // 3. Update DB
     const updates: any = {
       name,
       email,
       logo: logoUrl ?? null,
-      logo_path: newPath ?? merchant.logo_path ?? null,
     };
 
     const { data, error: updError } = await supabase
@@ -127,19 +130,35 @@ export default function ProfilePage() {
     }
 
     if (data) {
-      // ✅ update state di halaman profile
       setMerchant(data);
-
-      // ✅ update context & localStorage
       const updatedUser = { ...user, ...data };
       setUser(updatedUser);
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
-      // reset form & tutup modal
       setIsEditing(false);
       setFile(null);
       setPreview(null);
     }
+  };
+
+  const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+
+  const handleFileChange = (file: File | null) => {
+    if (!file) return;
+
+    // cek type
+    if (!file.type.startsWith("image/")) {
+      alert("❌ Hanya boleh upload file gambar (JPG, PNG, dll)");
+      return;
+    }
+
+    // cek ukuran
+    if (file.size > MAX_FILE_SIZE) {
+      alert("❌ Ukuran file maksimal 2MB");
+      return;
+    }
+
+    setFile(file);
   };
 
   if (!merchant) return <div className="p-6">Loading profile...</div>;
@@ -208,7 +227,7 @@ export default function ProfilePage() {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
                 className="w-full"
               />
 

@@ -5,9 +5,11 @@ import { supabase } from "@/lib/supabase";
 import { useUser } from "@/context/UserContext";
 import BasicTableOne from "@/components/table/BasicTableOne";
 import Link from "next/link";
+import Image from "next/image";
 
 type EventItem = {
   id: string;
+  image_venue: string;
   name: string;
   description?: string | null;
   location?: string | null;
@@ -33,11 +35,12 @@ export default function EventPage() {
     end_date: "",
     capacity: "",
     status: true,
+    image_venue: "",
   });
 
   const [editEvent, setEditEvent] = useState<EventItem | null>(null);
-
-  const qrRef = useRef<HTMLCanvasElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Event - MyApp";
@@ -47,6 +50,16 @@ export default function EventPage() {
     fetchEvents(); // load awal
   }, [user]);
 
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
   const fetchEvents = async (search?: string) => {
     if (!user?.id) return;
     setLoading(true);
@@ -54,7 +67,7 @@ export default function EventPage() {
     let query = supabase
       .from("events")
       .select(
-        "id, name, description, location, start_date, end_date, capacity, status"
+        "id, image_venue, name, description, location, start_date, end_date, capacity, status"
       )
       .eq("merchant_id", user.id);
 
@@ -78,12 +91,36 @@ export default function EventPage() {
   };
 
   const handleEditClick = (evt: EventItem) => {
+    setPreview(evt.image_venue || null);
     setEditEvent(evt);
     setShowEditModal(true);
   };
 
   const handleAddEvent = async () => {
     if (!user?.id || !newEvent.name.trim()) return;
+
+    let imageUrl: string | null = null;
+
+    // kalau ada file gambar → upload dulu
+    if (file) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "event"); // 👉 folder dinamis
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errRes = await res.json();
+        alert(errRes.error || "Upload failed");
+        return;
+      }
+
+      const { url } = await res.json();
+      imageUrl = url;
+    }
 
     const { error } = await supabase.from("events").insert([
       {
@@ -95,6 +132,7 @@ export default function EventPage() {
         end_date: newEvent.end_date || null,
         capacity: newEvent.capacity ? parseInt(newEvent.capacity) : null,
         status: newEvent.status,
+        image_venue: imageUrl, // ✅ simpan ke DB
       },
     ]);
 
@@ -112,12 +150,52 @@ export default function EventPage() {
       end_date: "",
       capacity: "",
       status: true,
+      image_venue: "",
     });
+    setFile(null);
+    setPreview(null);
+
     fetchEvents();
   };
 
   const handleUpdateEvent = async () => {
     if (!editEvent) return;
+
+    let imageUrl = editEvent.image_venue;
+
+    // kalau ada file baru → hapus lama + upload baru
+    if (file) {
+      // hapus file lama
+      if (
+        editEvent.image_venue &&
+        editEvent.image_venue.startsWith("/uploads/event/")
+      ) {
+        await fetch("/api/delete-file", {
+          method: "POST",
+          body: JSON.stringify({ filePath: editEvent.image_venue }),
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // upload file baru
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "event");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errRes = await res.json();
+        alert(errRes.error || "Upload failed");
+        return;
+      }
+
+      const { url } = await res.json();
+      imageUrl = url;
+    }
 
     const { error } = await supabase
       .from("events")
@@ -129,6 +207,7 @@ export default function EventPage() {
         end_date: editEvent.end_date,
         capacity: editEvent.capacity,
         status: editEvent.status,
+        image_venue: imageUrl, // ✅ update logo baru
       })
       .eq("id", editEvent.id);
 
@@ -139,6 +218,9 @@ export default function EventPage() {
 
     setShowEditModal(false);
     setEditEvent(null);
+    setFile(null);
+    setPreview(null);
+
     fetchEvents();
   };
 
@@ -205,7 +287,10 @@ export default function EventPage() {
               Search
             </button>
             <button
-              onClick={() => setShowAddModal(true)}
+              onClick={() => {
+                setShowAddModal(true);
+                setPreview(null);
+              }}
               className="bg-green-600 text-white px-4 py-2 rounded"
             >
               + Add Event
@@ -225,7 +310,7 @@ export default function EventPage() {
       {/* Modal Add & Edit tetap sama */}
       {/* Modal Tambah Event */}
       {showAddModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg w-96">
             <h2 className="text-lg font-bold mb-4">Tambah Event</h2>
             <input
@@ -271,6 +356,31 @@ export default function EventPage() {
                 setNewEvent({ ...newEvent, end_date: e.target.value })
               }
             />
+
+            <div className="p-2 mb-2">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="w-full"
+              />
+              {(preview || newEvent.image_venue) && (
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="w-16 h-16 relative overflow-hidden border">
+                    <Image
+                      src={
+                        preview ?? newEvent.image_venue ?? "/placeholder.png"
+                      }
+                      alt="preview"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="text-sm text-gray-500">Preview</div>
+                </div>
+              )}
+            </div>
+
             <input
               type="number"
               placeholder="Capacity"
@@ -313,7 +423,7 @@ export default function EventPage() {
 
       {/* Modal Edit Event */}
       {showEditModal && editEvent && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg w-96">
             <h2 className="text-lg font-bold mb-4">Edit Event</h2>
             <input
@@ -359,6 +469,32 @@ export default function EventPage() {
                 setEditEvent({ ...editEvent, end_date: e.target.value })
               }
             />
+
+            <div className="p-2 mb-2">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="w-full"
+              />
+
+              {(preview || newEvent.image_venue) && (
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="w-16 h-16 relative overflow-hidden border">
+                    <Image
+                      src={
+                        preview ?? newEvent.image_venue ?? "/placeholder.png"
+                      }
+                      alt="preview"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="text-sm text-gray-500">Preview</div>
+                </div>
+              )}
+            </div>
+
             <input
               type="number"
               placeholder="Capacity"
