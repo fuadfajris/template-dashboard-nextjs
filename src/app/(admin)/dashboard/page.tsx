@@ -130,8 +130,7 @@ export default function DashboardPage() {
         )
         .eq("status", "paid")
         .eq("event_id", eventId)
-        .order("order_date", { ascending: true })
-        .limit(5);
+        .order("order_date", { ascending: true });
 
       if (!error && data) {
         const eventDate = data.length
@@ -404,7 +403,7 @@ export default function DashboardPage() {
     { key: "date", label: "Date" },
   ];
 
-  const rows = ordersDashboard.recentOrders.map((entry, idx) => ({
+  const rows = ordersDashboard.recentOrders.slice(0, 5).map((entry, idx) => ({
     index: idx + 1,
     name: entry.user.name,
     email: entry.user.email,

@@ -13,6 +13,7 @@ import {
   HorizontaLDots,
 } from "@/icons";
 import { useUser } from "@/context/UserContext";
+import { ScanQrCode } from "lucide-react";
 // import {
 //   BoxCubeIcon,
 //   CalenderIcon,
@@ -58,6 +59,11 @@ const navItems: NavItem[] = [
     icon: <BoxIconLine />,
     name: "Order",
     path: "/order",
+  },
+  {
+    icon: <ScanQrCode />,
+    name: "Checkin",
+    path: "/checkin",
   },
 ];
 

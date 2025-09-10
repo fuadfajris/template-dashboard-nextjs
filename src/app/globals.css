@@ -25,3 +25,26 @@ body {
     text-wrap: balance;
   }
 }
+
+/* ==== QR Reader Custom Style ==== */
+#qr-reader__scan_region img {
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+#qr-reader button,
+#html5-qrcode-anchor-scan-type-change {
+  color: #111827 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 1rem !important;
+  font-weight: 500;
+}
+
+.dark #qr-reader button,
+.dark #html5-qrcode-anchor-scan-type-change {
+  color: #f9fafb !important;
+}
+
+#qr-reader img[alt="Info icon"] {
+  display: none !important;
+}
