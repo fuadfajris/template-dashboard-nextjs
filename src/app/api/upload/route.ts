@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
 
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const folder = formData.get("folder") as String || "general";
+    const folder = (formData.get("folder") as String) || "general";
 
     if (!file) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
@@ -44,5 +44,44 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("Upload error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const file = searchParams.get("file"); // contoh ?file=merchant/123.png
+
+    if (!file) {
+      return NextResponse.json({ error: "No file specified" }, { status: 400 });
+    }
+
+    const filePath = path.join(process.cwd(), "public", file);
+    const ext = path.extname(file).toLowerCase();
+
+    let contentType = "application/octet-stream";
+    if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
+    if (ext === ".png") contentType = "image/png";
+    if (ext === ".gif") contentType = "image/gif";
+    if (ext === ".webp") contentType = "image/webp";
+
+    // baca file -> Buffer
+    const buffer = await readFile(filePath);
+
+    // convert Buffer ke Uint8Array
+    const uint8Array = new Uint8Array(buffer);
+
+    return new NextResponse(uint8Array, {
+      headers: {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=31536000",
+      },
+    });
+  } catch (err: any) {
+    console.error("GET error:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch image", details: err.message },
+      { status: 500 }
+    );
   }
 }

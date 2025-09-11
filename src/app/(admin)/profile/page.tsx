@@ -11,7 +11,6 @@ type Merchant = {
   email: string;
   password?: string;
   logo?: string | null;
-  logo_path?: string | null;
   created_at: string;
 };
 
@@ -169,7 +168,7 @@ export default function ProfilePage() {
         <div className="flex flex-col items-center gap-4">
           {merchant.logo ? (
             <Image
-              src={merchant.logo}
+              src={`/api/upload?file=${merchant.logo}`} // ✅ ambil lewat API
               alt={merchant.name}
               width={112}
               height={112}
@@ -235,7 +234,13 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3 mt-2">
                   <div className="w-16 h-16 relative rounded-full overflow-hidden border">
                     <Image
-                      src={preview ?? merchant.logo ?? "/placeholder.png"}
+                      src={
+                        preview
+                          ? preview // local preview
+                          : merchant.logo
+                          ? `/api/upload?file=${merchant.logo}` // ✅ via API
+                          : "/api/upload?file=/placeholder.png"
+                      }
                       alt="preview"
                       fill
                       className="object-cover"

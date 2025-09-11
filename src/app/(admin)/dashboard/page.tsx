@@ -11,7 +11,8 @@ import { supabase } from "@/lib/supabase";
 import { ApexOptions } from "apexcharts";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import ReactApexChart from "react-apexcharts";
+import dynamic from "next/dynamic";
+const ReactApexChart = dynamic(() => import("react-apexcharts"), {ssr: false})
 
 type EventOption = { value: string; label: string };
 
@@ -154,7 +155,7 @@ export default function DashboardPage() {
           "Dec",
         ];
 
-        let cat: string[] = [];
+        const cat: string[] = [];
         for (let i = 2; i >= 0; i--) {
           const d = new Date(eventYear, eventMonth - i, 1);
           cat.push(monthNames[d.getMonth()]);
@@ -162,7 +163,7 @@ export default function DashboardPage() {
         setCategories(cat);
 
         const monthCounts = Array(3).fill(0);
-        data.forEach((item: any) => {
+        data.forEach((item: Order) => {
           const date = new Date(item.order_date);
           const m = date.getMonth();
           const y = date.getFullYear();
@@ -358,7 +359,7 @@ export default function DashboardPage() {
     };
 
     countCheckin();
-  }, [ticketsDashboard.totalTickets]);
+  }, [ticketsDashboard.totalTickets, eventId, user?.id]);
 
   const options: ApexOptions = {
     labels: ["Male", "Female", "Not Checkin"],

@@ -1,35 +1,37 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, ReactNode } from "react";
 import Paginator from "./Paginator";
 
-type Column = { key: string; label: string };
+type Column<T> = { key: keyof T & string; label: string };
 
-type SortConfig = {
-  key: string;
+type SortConfig<T> = {
+  key: keyof T & string;
   direction: "asc" | "desc";
 } | null;
 
-export default function BasicTableOne({
+// ✅ Nilai cell bisa string | number | ReactNode
+export type TableRow = Record<string, string | number | ReactNode>;
+
+export default function BasicTableOne<T extends TableRow>({
   columns,
   rows,
   pageSize = 10,
 }: {
-  columns: Column[];
-  rows: Record<string, any>[];
+  columns: Column<T>[];
+  rows: T[];
   pageSize?: number;
 }) {
   const [currentPage, setCurrentPage] = useState(0);
-  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig<T>>(null);
 
   useEffect(() => {
-    setCurrentPage(rows.length ? 1 : 0)
+    setCurrentPage(rows.length ? 1 : 0);
   }, [rows]);
 
-  const handleSort = (key: string) => {
+  const handleSort = (key: keyof T & string) => {
     setSortConfig((prev) => {
       if (prev && prev.key === key) {
-        // toggle asc/desc
         return {
           key,
           direction: prev.direction === "asc" ? "desc" : "asc",
@@ -45,16 +47,16 @@ export default function BasicTableOne({
       const aVal = a[sortConfig.key];
       const bVal = b[sortConfig.key];
 
-      if (aVal === null || aVal === undefined) return 1;
-      if (bVal === null || bVal === undefined) return -1;
-
+      // hanya bisa sort number/string
       if (typeof aVal === "number" && typeof bVal === "number") {
         return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
       }
-
-      return sortConfig.direction === "asc"
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
+      if (typeof aVal === "string" && typeof bVal === "string") {
+        return sortConfig.direction === "asc"
+          ? aVal.localeCompare(bVal)
+          : bVal.localeCompare(aVal);
+      }
+      return 0; // ReactNode atau tipe lain tidak disort
     });
   }, [rows, sortConfig]);
 
@@ -112,7 +114,6 @@ export default function BasicTableOne({
         </tbody>
       </table>
 
-      {/* Paginator */}
       <Paginator
         currentPage={currentPage}
         pageSize={pageSize}
