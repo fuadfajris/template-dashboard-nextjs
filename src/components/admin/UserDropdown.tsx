@@ -34,7 +34,16 @@ export default function UserDropdown() {
       >
         <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
           {user?.logo && (
-            <Image width={44} height={44} src={user.logo} alt={user.name} />
+            <Image
+              width={44}
+              height={44}
+              src={
+                user.logo
+                  ? `/api/upload?file=${user.logo}`
+                  : "/api/upload?file=/uploads/merchant/placeholder.png"
+              }
+              alt={user.name}
+            />
           )}
         </span>
 

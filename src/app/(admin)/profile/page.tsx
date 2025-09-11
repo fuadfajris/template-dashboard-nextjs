@@ -239,7 +239,7 @@ export default function ProfilePage() {
                           ? preview // local preview
                           : merchant.logo
                           ? `/api/upload?file=${merchant.logo}` // ✅ via API
-                          : "/api/upload?file=/placeholder.png"
+                          : "/api/upload?file=/uploads/merchant/placeholder.png"
                       }
                       alt="preview"
                       fill

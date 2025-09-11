@@ -7,10 +7,11 @@ import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 import UserDropdown from "./UserDropdown";
 import { ThemeToggleButton } from "@/components/common/ThemeToggleButton";
+import { useUser } from "@/context/UserContext";
 
 const Header: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
-
+  const { user } = useUser();
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
 
   const handleToggle = () => {
@@ -89,14 +90,22 @@ const Header: React.FC = () => {
               width={154}
               height={32}
               className="dark:hidden"
-              src="./images/logo/logo.svg"
+              src={
+                user?.logo
+                  ? `/api/upload?file=${user.logo}`
+                  : "/api/upload?file=/uploads/merchant/placeholder.png"
+              }
               alt="Logo"
             />
             <Image
               width={154}
               height={32}
               className="hidden dark:block"
-              src="./images/logo/logo-dark.svg"
+              src={
+                user?.logo
+                  ? `/api/upload?file=${user.logo}`
+                  : "/api/upload?file=/uploads/merchant/placeholder.png"
+              }
               alt="Logo"
             />
           </Link>

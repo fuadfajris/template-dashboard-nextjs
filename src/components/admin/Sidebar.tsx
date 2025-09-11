@@ -304,19 +304,16 @@ const Sidebar: React.FC = () => {
               {user?.logo && (
                 <div className="flex items-center gap-2">
                   <Image
-                    src={user.logo}
+                    src={
+                      user.logo
+                        ? `/api/upload?file=${user.logo}`
+                        : "/api/upload?file=/uploads/merchant/placeholder.png"
+                    }
                     alt="Logo"
                     width={50}
                     height={50}
                     className="rounded-full"
                   />
-                  {/* <Image
-                    className="hidden dark:block"
-                    src={user.logo}
-                    width={100}
-                    height={100}
-                    alt="Logo"
-                  /> */}
                   <span className="font-bold text-lg text-black dark:text-white">
                     {user?.name}
                   </span>
@@ -327,7 +324,16 @@ const Sidebar: React.FC = () => {
             <>
               {user?.logo && (
                 <>
-                  <Image src={user.logo} alt="Logo" width={32} height={32} />
+                  <Image
+                    src={
+                      user.logo
+                        ? `/api/upload?file=${user.logo}`
+                        : "/api/upload?file=/uploads/merchant/placeholder.png"
+                    }
+                    alt="Logo"
+                    width={32}
+                    height={32}
+                  />
                   <span className="font-bold text-sm">{user?.name}</span>
                 </>
               )}

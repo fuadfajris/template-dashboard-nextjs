@@ -19,6 +19,15 @@ type EventItem = {
   status?: boolean;
 };
 
+type EventRow = {
+  index: number;
+  eventName: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  action: React.ReactNode;
+};
+
 export default function EventPage() {
   const { user } = useUser();
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -283,7 +292,7 @@ export default function EventPage() {
     fetchEvents();
   };
 
-  const columns = [
+  const columns: { key: keyof EventRow & string; label: string }[] = [
     { key: "index", label: "No" },
     { key: "eventName", label: "Event Name" },
     { key: "startDate", label: "Start Date" },
@@ -432,7 +441,11 @@ export default function EventPage() {
                   <div className="w-16 h-16 relative overflow-hidden border">
                     <Image
                       src={
-                        preview ?? newEvent.image_venue ?? "/placeholder.png"
+                        preview
+                          ? preview
+                          : newEvent.image_venue
+                          ? `/api/upload?file=${newEvent.image_venue}`
+                          : "/api/upload?file=/uploads/event/placeholder.png"
                       }
                       alt="preview"
                       fill
@@ -551,7 +564,11 @@ export default function EventPage() {
                   <div className="w-16 h-16 relative overflow-hidden border">
                     <Image
                       src={
-                        preview ?? newEvent.image_venue ?? "/placeholder.png"
+                        preview
+                          ? preview
+                          : newEvent.image_venue
+                          ? `/api/upload?file=${newEvent.image_venue}`
+                          : "/api/upload?file=/uploads/event/placeholder.png"
                       }
                       alt="preview"
                       fill
