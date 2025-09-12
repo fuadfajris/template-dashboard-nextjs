@@ -32,8 +32,10 @@ export default function EventPage() {
   const { user } = useUser();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [searchTerm, setSearchTerm] = useState(""); // ✅ search state
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [newEvent, setNewEvent] = useState({
     name: "",
     description: "",
@@ -44,15 +46,19 @@ export default function EventPage() {
     status: true,
     image_venue: "",
   });
+
+  const [editEvent, setEditEvent] = useState<EventItem | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [originalEvent, setOriginalEvent] = useState<EventItem | null>(null);
+  const [isChanged, setIsChanged] = useState(false);
 
   useEffect(() => {
     document.title = "Event - MyApp";
   }, []);
 
   useEffect(() => {
-    fetchEvents();
+    fetchEvents(); // load awal
   }, [user]);
 
   useEffect(() => {
@@ -65,6 +71,24 @@ export default function EventPage() {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  useEffect(() => {
+    if (!editEvent || !originalEvent) return;
+
+    const hasChanged =
+      editEvent.name !== originalEvent.name ||
+      editEvent.description !== originalEvent.description ||
+      editEvent.location !== originalEvent.location ||
+      editEvent.start_date?.split("T")[0] !==
+        originalEvent.start_date?.split("T")[0] ||
+      editEvent.end_date?.split("T")[0] !==
+        originalEvent.end_date?.split("T")[0] ||
+      editEvent.capacity !== originalEvent.capacity ||
+      editEvent.status !== originalEvent.status ||
+      !!file; // ada file baru → dianggap berubah
+
+    setIsChanged(hasChanged);
+  }, [editEvent, originalEvent, file]);
+
   const fetchEvents = async (search?: string) => {
     if (!user?.id) return;
     setLoading(true);
@@ -74,9 +98,9 @@ export default function EventPage() {
       .select(
         "id, image_venue, name, description, location, start_date, end_date, capacity, status"
       )
-      .eq("merchant_id", user.id)
-      .order("id", { ascending: true });
+      .eq("merchant_id", user.id);
 
+    // ✅ kalau ada search, filter langsung ke DB
     if (search && search.trim() !== "") {
       query = query.or(
         `name.ilike.%${search}%,description.ilike.%${search}%,location.ilike.%${search}%`
@@ -93,6 +117,13 @@ export default function EventPage() {
     }
 
     if (data) setEvents(data);
+  };
+
+  const handleEditClick = (evt: EventItem) => {
+    setPreview(evt.image_venue || null);
+    setEditEvent({ ...evt });
+    setOriginalEvent({ ...evt }); // ✅ simpan data awal
+    setShowEditModal(true);
   };
 
   const handleAddEvent = async () => {
@@ -118,8 +149,6 @@ export default function EventPage() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "event");
-      formData.append("scope", "event");
-      formData.append("template_id", "1");
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -172,6 +201,97 @@ export default function EventPage() {
     fetchEvents();
   };
 
+  const handleUpdateEvent = async () => {
+    if (!editEvent) return;
+
+    // ✅ Validasi field kosong
+    if (
+      !editEvent.name.trim() ||
+      !editEvent.description?.trim() ||
+      !editEvent.location?.trim() ||
+      !editEvent.start_date ||
+      !editEvent.end_date ||
+      !editEvent.capacity
+    ) {
+      alert("Semua field wajib diisi!");
+      return;
+    }
+
+    // ✅ Cek apakah data berubah
+    const original = events.find((e) => e.id === editEvent.id);
+    if (original) {
+      const isSame =
+        original.name === editEvent.name &&
+        original.description === editEvent.description &&
+        original.location === editEvent.location &&
+        original.start_date?.split("T")[0] === editEvent.start_date &&
+        original.end_date?.split("T")[0] === editEvent.end_date &&
+        original.capacity === editEvent.capacity &&
+        original.status === editEvent.status &&
+        !file; // gambar juga sama
+
+      if (isSame) {
+        alert("Tidak ada perubahan data.");
+        return;
+      }
+    }
+
+    let imageUrl = editEvent.image_venue;
+
+    if (file) {
+      if (editEvent.image_venue?.startsWith("/uploads/event/")) {
+        await fetch("/api/delete-file", {
+          method: "POST",
+          body: JSON.stringify({ filePath: editEvent.image_venue }),
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", "event");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const errRes = await res.json();
+        alert(errRes.error || "Upload failed");
+        return;
+      }
+
+      const { url } = await res.json();
+      imageUrl = url;
+    }
+
+    const { error } = await supabase
+      .from("events")
+      .update({
+        name: editEvent.name,
+        description: editEvent.description,
+        location: editEvent.location,
+        start_date: editEvent.start_date,
+        end_date: editEvent.end_date,
+        capacity: editEvent.capacity,
+        status: editEvent.status,
+        image_venue: imageUrl,
+      })
+      .eq("id", editEvent.id);
+
+    if (error) {
+      console.error("Failed to update event:", error.message);
+      return;
+    }
+
+    setShowEditModal(false);
+    setEditEvent(null);
+    setFile(null);
+    setPreview(null);
+
+    fetchEvents();
+  };
+
   const columns: { key: keyof EventRow & string; label: string }[] = [
     { key: "index", label: "No" },
     { key: "eventName", label: "Event Name" },
@@ -203,6 +323,12 @@ export default function EventPage() {
           >
             Detail
           </Link>
+          <button
+            onClick={() => handleEditClick(evt)}
+            className="bg-blue-600 text-white px-3 py-1 rounded"
+          >
+            Edit
+          </button>
         </div>
       ),
     };
@@ -243,8 +369,6 @@ export default function EventPage() {
         <div className="px-6 py-5">
           {loading ? (
             <p>Loading...</p>
-          ) : events.length === 0 ? (
-            <p className="text-gray-500">Tidak ada event</p>
           ) : (
             <BasicTableOne columns={columns} rows={rows} />
           )}
@@ -367,6 +491,140 @@ export default function EventPage() {
                 onClick={handleAddEvent}
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Event */}
+      {showEditModal && editEvent && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg w-96">
+            <h2 className="text-lg font-bold mb-4">Edit Event</h2>
+            <input
+              type="text"
+              placeholder="Event Name"
+              className="w-full border p-2 mb-2"
+              value={editEvent.name || ""}
+              onChange={(e) =>
+                setEditEvent({ ...editEvent, name: e.target.value })
+              }
+            />
+            <input
+              type="text"
+              placeholder="Description"
+              className="w-full border p-2 mb-2"
+              value={editEvent.description || ""}
+              onChange={(e) =>
+                setEditEvent({ ...editEvent, description: e.target.value })
+              }
+            />
+            <input
+              type="text"
+              placeholder="Location"
+              className="w-full border p-2 mb-2"
+              value={editEvent.location || ""}
+              onChange={(e) =>
+                setEditEvent({ ...editEvent, location: e.target.value })
+              }
+            />
+            <input
+              type="date"
+              className="w-full border p-2 mb-2"
+              value={editEvent.start_date?.split("T")[0] || ""}
+              min={new Date().toISOString().split("T")[0]}
+              onChange={(e) =>
+                setEditEvent({ ...editEvent, start_date: e.target.value })
+              }
+            />
+            <input
+              type="date"
+              className="w-full border p-2 mb-2"
+              value={editEvent.end_date?.split("T")[0] || ""}
+              min={
+                editEvent.start_date?.split("T")[0] ||
+                new Date().toISOString().split("T")[0]
+              }
+              onChange={(e) =>
+                setEditEvent({ ...editEvent, end_date: e.target.value })
+              }
+            />
+
+            <div className="p-2 mb-2">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="w-full"
+              />
+
+              {(preview || newEvent.image_venue) && (
+                <div className="flex items-center gap-3 mt-2">
+                  <div className="w-16 h-16 relative overflow-hidden border">
+                    <Image
+                      src={
+                        preview
+                          ? preview
+                          : newEvent.image_venue
+                          ? `/api/upload?file=${newEvent.image_venue}`
+                          : "/api/upload?file=/uploads/event/placeholder.png"
+                      }
+                      alt="preview"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="text-sm text-gray-500">Preview</div>
+                </div>
+              )}
+            </div>
+
+            <input
+              type="number"
+              placeholder="Capacity"
+              className="w-full border p-2 mb-2"
+              value={editEvent.capacity || ""}
+              onChange={(e) =>
+                setEditEvent({
+                  ...editEvent,
+                  capacity: e.target.value ? parseInt(e.target.value) : null,
+                })
+              }
+            />
+
+            {/* ✅ Select status */}
+            <select
+              className="w-full border p-2 mb-2"
+              value={editEvent.status ? "true" : "false"}
+              onChange={(e) =>
+                setEditEvent({
+                  ...editEvent,
+                  status: e.target.value === "true",
+                })
+              }
+            >
+              <option value="true">Active</option>
+              <option value="false">Nonactive</option>
+            </select>
+
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-2 bg-gray-400 text-white rounded"
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={`px-4 py-2 rounded text-white ${
+                  isChanged
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-gray-400 cursor-not-allowed"
+                }`}
+                onClick={handleUpdateEvent}
+                disabled={!isChanged} // ✅ disable kalau belum ada perubahan
+              >
+                Update
               </button>
             </div>
           </div>

@@ -27,23 +27,10 @@ type Template = {
   features: string[];
 };
 
-type Event = {
-  id: string;
-  name: string;
-  description: string;
-  location?: string | null;
-  start_date?: string | null;
-  end_date?: string | null;
-  capacity?: number | null;
-  status?: boolean | null;
-  image_venue?: string | null;
-  template_id?: number | null;
-};
-
 export default function EventDetailPage() {
   const didFetch = useRef(false);
   const { id } = useParams();
-  const [event, setEvent] = useState<Event | null>(null);
+  const [event, setEvent] = useState<any>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<number | null>(null);
@@ -53,35 +40,15 @@ export default function EventDetailPage() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [editEvent, setEditEvent] = useState<Event | null>(null);
-  const [file, setFile] = useState<File | null>(null);
-
-  const [isChanged, setIsChanged] = useState(false);
 
   // fetch data event & template
   useEffect(() => {
-    if (!didFetch.current && id) {
-      fetchEvent(id as string);
-      fetchTemplates();
-      didFetch.current = true;
-    }
-  }, [id]);
-
-  useEffect(() => {
-    if (!editEvent || !event) return;
-
-    const hasChanged =
-      editEvent.name !== event.name ||
-      editEvent.description !== event.description ||
-      editEvent.location !== event.location ||
-      editEvent.start_date?.split("T")[0] !== event.start_date?.split("T")[0] ||
-      editEvent.end_date?.split("T")[0] !== event.end_date?.split("T")[0] ||
-      editEvent.capacity !== event.capacity ||
-      editEvent.status !== event.status ||
-      !!file; // ada file baru → dianggap berubah
-
-    setIsChanged(hasChanged);
-  }, [editEvent, event, file]);
+  if (!didFetch.current && id) {
+    fetchEvent(id as string);
+    fetchTemplates();
+    didFetch.current = true;
+  }
+}, [id]);
 
   const fetchEvent = async (eventId: string) => {
     const { data, error } = await supabase
@@ -95,7 +62,6 @@ export default function EventDetailPage() {
       return;
     }
     setEvent(data);
-    setEditEvent(data);
 
     if (data.template_id) {
       setActiveTemplate(data.template_id);
@@ -176,79 +142,6 @@ export default function EventDetailPage() {
 
   const toggleFullscreen = () => {
     setIsFullscreen((prev) => !prev);
-  };
-
-  const handleSaveEvent = async () => {
-    if (!editEvent) return;
-
-    // ✅ Validasi field kosong
-    if (
-      !editEvent.name.trim() ||
-      !editEvent.description?.trim() ||
-      !editEvent.location?.trim() ||
-      !editEvent.start_date ||
-      !editEvent.end_date ||
-      !editEvent.capacity
-    ) {
-      alert("Semua field wajib diisi!");
-      return;
-    }
-
-    let imageUrl = event?.image_venue;
-
-    if (file) {
-      if (event?.image_venue?.startsWith("/uploads/event/")) {
-        await fetch("/api/delete-file", {
-          method: "POST",
-          body: JSON.stringify({
-            filePath: event?.image_venue,
-            scope: "event",
-            templateId: editEvent.template_id,
-          }),
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "event");
-      formData.append("scope", "event");
-      formData.append("template_id", "1");
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const errRes = await res.json();
-        alert(errRes.error || "Upload failed");
-        return;
-      }
-
-      const { url } = await res.json();
-      imageUrl = url;
-    }
-
-    const { error } = await supabase
-      .from("events")
-      .update({
-        name: editEvent.name,
-        description: editEvent.description,
-        location: editEvent.location,
-        start_date: editEvent.start_date,
-        end_date: editEvent.end_date,
-        capacity: editEvent.capacity,
-        status: editEvent.status,
-        image_venue: imageUrl,
-      })
-      .eq("id", editEvent.id);
-
-    if (error) {
-      console.error("Failed to update event:", error.message);
-      return;
-    }
-
-    alert("Event updated successfully!");
   };
 
   if (!event) return <p className="text-muted-foreground">Loading...</p>;
@@ -445,169 +338,6 @@ export default function EventDetailPage() {
           </CardContent>
         </Card>
       )}
-
-      <div className="bg-white p-6 rounded-lg mt-5 grid gap-4">
-        <h2 className="text-lg font-bold mb-4 col-span-12">Edit Event</h2>
-
-        {/* Name & Location */}
-        <input
-          type="text"
-          placeholder="Event Name"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
-          value={editEvent?.name || ""}
-          onChange={(e) =>
-            setEditEvent((prev) =>
-              prev ? { ...prev, name: e.target.value } : null
-            )
-          }
-        />
-
-        <input
-          type="text"
-          placeholder="Location"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
-          value={editEvent?.location || ""}
-          onChange={(e) =>
-            setEditEvent((prev) =>
-              prev ? { ...prev, location: e.target.value } : null
-            )
-          }
-        />
-
-        {/* Description */}
-        <textarea
-          placeholder="Description"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 h-32 resize-y"
-          value={editEvent?.description || ""}
-          onChange={(e) =>
-            setEditEvent((prev) =>
-              prev ? { ...prev, description: e.target.value } : null
-            )
-          }
-        />
-
-        {/* Start Date & End Date */}
-        <input
-          type="date"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
-          value={editEvent?.start_date?.split("T")[0] || ""}
-          min={
-            editEvent?.start_date?.split("T")[0] ||
-            new Date().toISOString().split("T")[0]
-          }
-          max={editEvent?.end_date?.split("T")[0] || undefined}
-          onChange={(e) =>
-            setEditEvent((prev) =>
-              prev ? { ...prev, start_date: e.target.value } : null
-            )
-          }
-        />
-
-        <input
-          type="date"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
-          value={editEvent?.end_date?.split("T")[0] || ""}
-          min={
-            editEvent?.end_date?.split("T")[0] ||
-            new Date().toISOString().split("T")[0]
-          }
-          onChange={(e) =>
-            setEditEvent((prev) =>
-              prev ? { ...prev, end_date: e.target.value } : null
-            )
-          }
-        />
-
-        {/* Upload Image with Preview */}
-        <div className="col-span-12 grid grid-cols-12 gap-4 items-start">
-          <div className="col-span-12 lg:col-span-6">
-            <input
-              type="file"
-              accept="image/*"
-              className="w-full border rounded-lg p-2 mb-2"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const previewUrl = URL.createObjectURL(file);
-                  setFile(file);
-                  setEditEvent((prev) =>
-                    prev ? { ...prev, image_venue: previewUrl } : null
-                  );
-                } else {
-                  console.log("else file");
-                }
-              }}
-            />
-          </div>
-
-          {/* Image Preview */}
-          <div className="col-span-12 lg:col-span-6 flex items-center">
-            {editEvent?.image_venue ? (
-              <img
-                src={
-                  editEvent.image_venue.startsWith("blob:")
-                    ? editEvent.image_venue
-                    : editEvent.image_venue.startsWith("/uploads")
-                    ? editEvent.image_venue
-                    : `/api/upload?file=${editEvent.image_venue}`
-                }
-                alt="Event Preview"
-                className="w-full h-40 object-cover rounded-lg border"
-              />
-            ) : (
-              <div className="w-full h-40 flex items-center justify-center border rounded-lg text-gray-400">
-                No Image
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Capacity & Status */}
-        <input
-          type="number"
-          placeholder="Capacity"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
-          value={editEvent?.capacity || 0}
-          onChange={(e) =>
-            setEditEvent((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    capacity: e.target.value ? parseInt(e.target.value) : null,
-                  }
-                : null
-            )
-          }
-        />
-
-        <select
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
-          value={editEvent?.status ? "true" : "false"}
-          onChange={(e) =>
-            setEditEvent((prev) =>
-              prev ? { ...prev, status: e.target.value === "true" } : null
-            )
-          }
-        >
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
-        </select>
-
-        {/* Action Buttons */}
-        <div className="col-span-12 flex justify-end mt-4">
-          <Button
-            onClick={handleSaveEvent}
-            className={`px-4 py-2 rounded text-white ${
-              isChanged
-                ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-gray-400 cursor-not-allowed"
-            }`}
-            disabled={!isChanged}
-          >
-            Save Changes
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

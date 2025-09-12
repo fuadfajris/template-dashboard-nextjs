@@ -89,6 +89,8 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "merchant");
+      formData.append("scope", "merchant"); // merchant / event
+      formData.append("template_id", "");
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -103,7 +105,7 @@ export default function ProfilePage() {
       }
 
       const { url } = await res.json();
-      logoUrl = url; 
+      logoUrl = url;
     }
 
     // 3. Update DB
