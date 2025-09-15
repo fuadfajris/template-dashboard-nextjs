@@ -12,7 +12,9 @@ import { ApexOptions } from "apexcharts";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-const ReactApexChart = dynamic(() => import("react-apexcharts"), {ssr: false})
+const ReactApexChart = dynamic(() => import("react-apexcharts"), {
+  ssr: false,
+});
 
 type EventOption = { value: string; label: string };
 
@@ -396,14 +398,6 @@ export default function DashboardPage() {
     },
   };
 
-  const columns = [
-    { key: "index", label: "No" },
-    { key: "name", label: "Name" },
-    { key: "email", label: "Email" },
-    { key: "phone", label: "Phone" },
-    { key: "date", label: "Date" },
-  ];
-
   const rows = ordersDashboard.recentOrders.slice(0, 5).map((entry, idx) => ({
     index: idx + 1,
     name: entry.user.name,
@@ -532,7 +526,16 @@ export default function DashboardPage() {
           <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90 mb-4">
             Recent Order
           </h3>
-          <BasicTableOne columns={columns} rows={rows} />
+          <BasicTableOne
+            columns={[
+              { key: "index", label: "No" },
+              { key: "name", label: "Name" },
+              { key: "email", label: "Email" },
+              { key: "phone", label: "Phone" },
+              { key: "date", label: "Date" },
+            ]}
+            rows={rows}
+          />
         </div>
       </div>
     </>
