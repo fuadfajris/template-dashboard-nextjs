@@ -109,7 +109,7 @@ export default function ProfilePage() {
     }
 
     // 3. Update DB
-    const updates: any = {
+    const updates: Partial<Merchant> = {
       name,
       email,
       logo: logoUrl ?? null,

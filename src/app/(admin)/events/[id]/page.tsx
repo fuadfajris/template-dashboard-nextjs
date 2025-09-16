@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
+import { useUser } from "@/context/UserContext";
 
 type Feature = {
   feature_name: string;
@@ -57,6 +58,7 @@ type Event = {
 
 export default function EventDetailPage() {
   const didFetch = useRef(false);
+  const { user } = useUser();
   const { id } = useParams();
   const [event, setEvent] = useState<Event | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -160,9 +162,7 @@ export default function EventDetailPage() {
   };
 
   const handleApplyTemplate = async () => {
-    console.log("event : ", event);
     if (!selectedTemplate || !event) return;
-    console.log("event 2");
 
     setIsApplying(true);
 
@@ -414,10 +414,17 @@ export default function EventDetailPage() {
             {/* Body */}
             <div className="flex-1 bg-background">
               <iframe
-                src={
-                  templates.find((t) => t.id === previewTemplate)?.url ||
-                  "http://localhost:3000"
-                }
+                src={(() => {
+                  const templateUrl = templates.find(
+                    (t) => t.id === previewTemplate
+                  )?.url;
+
+                  if (!templateUrl) return "http://localhost:3000";
+                  const eventId = event?.id ?? "";
+                  const merchantId = user?.id;
+
+                  return `${templateUrl}?event_id=${eventId}&merchant_id=${merchantId}`;
+                })()}
                 className="w-full h-full"
                 title="Template Preview"
                 frameBorder="0"

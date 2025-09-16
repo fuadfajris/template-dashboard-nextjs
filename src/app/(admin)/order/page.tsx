@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/context/UserContext";
 import BasicTableOne from "@/components/table/BasicTableOne";
@@ -44,7 +44,7 @@ export default function OrderPage() {
   const { user } = useUser();
   const [eventList, setEventList] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState("");
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -80,12 +80,12 @@ export default function OrderPage() {
     fetchEvents();
   }, [user]);
 
-  const fetchOrder = async (search?: string) => {
+  const fetchOrder = useCallback(async (search?: string) => {
     if (!eventId) return;
     setLoadingOrders(true);
 
     // Ambil semua orders dengan relasi users
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from("orders")
       .select(
         `
@@ -139,12 +139,12 @@ export default function OrderPage() {
 
       setOrders(mapped);
     }
-  };
+  }, [eventId]);
 
   // Auto fetch ketika event berubah
   useEffect(() => {
     if (eventId) fetchOrder();
-  }, [eventId]);
+  }, [eventId, fetchOrder]);
 
   const handleDetailClick = async (order: Order) => {
     setSelectedOrder(order);

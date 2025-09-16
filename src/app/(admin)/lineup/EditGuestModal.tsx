@@ -22,7 +22,7 @@ export default function EditGuestModal({
   onClose,
   onUpdated,
 }: {
-  eventId: String | null;
+  eventId: string | null;
   guest: Guest | null;
   open: boolean;
   onClose: () => void;
@@ -41,7 +41,6 @@ export default function EditGuestModal({
     // fetch event range kalau ada event_id
     const fetchEventRange = async () => {
       if (!eventId) return;
-      console.log("guest test");
 
       const { data, error } = await supabase
         .from("events")
@@ -61,10 +60,9 @@ export default function EditGuestModal({
         });
       }
     };
-    console.log("open : ", open)
 
     fetchEventRange();
-  }, [guest, open]);
+  }, [eventId, guest, open]);
 
   const handleChange = (field: keyof Guest, value: string) => {
     setForm((prev) => (prev ? { ...prev, [field]: value } : prev));

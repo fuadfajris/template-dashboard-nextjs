@@ -40,7 +40,7 @@ export default function AddGuestModal({
       if (!error && data) setGuests(data);
     };
     fetchGuests();
-  }, [!isOpen]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -60,7 +60,7 @@ export default function AddGuestModal({
     };
 
     if (eventId) fetchEvent();
-  }, [eventId, !isOpen]);
+  }, [eventId, isOpen]);
 
   const handleSubmit = async () => {
     if (!selectedGuest || !date || !start || !end) return;

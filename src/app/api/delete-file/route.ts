@@ -63,7 +63,6 @@ export async function POST(req: Request) {
     try {
       await fs.stat(absolutePath);
       await fs.unlink(absolutePath);
-      console.log("Local file deleted:", absolutePath);
     } catch {
       console.warn("File not found locally, skip delete:", absolutePath);
     }

@@ -3,7 +3,7 @@
 
 type EventDay = {
   date: string;
-  guests: { }[];
+  guests: unknown[];
 };
 
 export default function ChartTab({
