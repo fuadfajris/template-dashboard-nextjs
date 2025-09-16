@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import path from "path";
-import { supabase } from "@/lib/supabase";
 
 export async function POST(req: Request) {
   try {
@@ -9,6 +8,7 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File;
     const folder = (formData.get("folder") as string) || "";
     const templateId = formData.get("template_id") as string | null;
+    const templateUrl = formData.get("template_url") as string | null;
     const scope = formData.get("scope") as string;
 
     if (!file) {
@@ -35,30 +35,19 @@ export async function POST(req: Request) {
 
     let remoteUrl: string | null = null;
 
-    // 🟢 1. Upload ke remote dulu
     if (scope === "event" && templateId) {
-      const { data: template, error } = await supabase
-        .from("templates")
-        .select("url")
-        .eq("id", templateId)
-        .single();
+      const remoteRes = await fetch(`${templateUrl}api/upload`, {
+        method: "POST",
+        body: formData,
+      });
 
-      if (error) {
-        console.error("Fetch template url failed:", error.message);
-      } else if (template?.url) {
-        const remoteRes = await fetch(`${template.url}api/upload`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!remoteRes.ok) {
-          const text = await remoteRes.text();
-          throw new Error(`Remote upload failed: ${text}`);
-        }
-
-        const remoteJson = await remoteRes.json();
-        remoteUrl = remoteJson.url ?? null;
+      if (!remoteRes.ok) {
+        const text = await remoteRes.text();
+        throw new Error(`Remote upload failed: ${text}`);
       }
+
+      const remoteJson = await remoteRes.json();
+      remoteUrl = remoteJson.url ?? null;
     }
 
     // 🟢 2. Kalau remote berhasil → simpan ke lokal

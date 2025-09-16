@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import path from "path";
-import { supabase } from "@/lib/supabase";
 
 interface RemoteDeleteResponse {
   success: boolean;
@@ -11,7 +10,7 @@ interface RemoteDeleteResponse {
 
 export async function POST(req: Request) {
   try {
-    const { filePath, scope, templateId } = await req.json();
+    const { filePath, scope, templateId, templateUrl } = await req.json();
 
     if (!filePath) {
       return NextResponse.json(
@@ -24,38 +23,26 @@ export async function POST(req: Request) {
 
     let remoteResult: RemoteDeleteResponse | null = null;
     if (scope === "event" && templateId) {
-      const { data: template, error } = await supabase
-        .from("templates")
-        .select("url")
-        .eq("id", templateId)
-        .single();
+      try {
+        const remoteRes = await fetch(`${templateUrl}api/delete-file`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filePath }),
+        });
 
-      if (error) {
-        throw new Error("Fetch template url failed: " + error.message);
-      }
-
-      if (template?.url) {
-        try {
-          const remoteRes = await fetch(`${template.url}api/delete-file`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filePath }),
-          });
-
-          if (!remoteRes.ok) {
-            const errMsg = await remoteRes.text();
-            throw new Error(`Remote delete failed: ${errMsg}`);
-          }
-
-          remoteResult = (await remoteRes.json()) as RemoteDeleteResponse;
-        } catch (err) {
-          console.error("Remote delete request error:", err);
-          const message = err instanceof Error ? err.message : String(err);
-          return NextResponse.json(
-            { error: "Remote delete failed: " + message },
-            { status: 500 }
-          );
+        if (!remoteRes.ok) {
+          const errMsg = await remoteRes.text();
+          throw new Error(`Remote delete failed: ${errMsg}`);
         }
+
+        remoteResult = (await remoteRes.json()) as RemoteDeleteResponse;
+      } catch (err) {
+        console.error("Remote delete request error:", err);
+        const message = err instanceof Error ? err.message : String(err);
+        return NextResponse.json(
+          { error: "Remote delete failed: " + message },
+          { status: 500 }
+        );
       }
     }
 

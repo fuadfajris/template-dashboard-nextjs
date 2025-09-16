@@ -75,6 +75,9 @@ export default function EventDetailPage() {
   const [isChanged, setIsChanged] = useState(false);
   const venueInputRef = useRef<HTMLInputElement | null>(null);
   const heroInputRef = useRef<HTMLInputElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [maxHeight, setMaxHeight] = useState<string | undefined>();
+  const [isScrollable, setIsScrollable] = useState(false);
 
   // fetch data event & template
   useEffect(() => {
@@ -101,6 +104,23 @@ export default function EventDetailPage() {
 
     setIsChanged(hasChanged);
   }, [editEvent, event, file, heroFile]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const cards =
+      containerRef.current.querySelectorAll<HTMLDivElement>(".template-card");
+
+    const heights: number[] = [];
+    cards.forEach((card, i) => {
+      if (i < 3) heights.push(card.offsetHeight);
+    });
+
+    const tallest = Math.max(...heights, 0);
+
+    setIsScrollable(cards.length > 3);
+    setMaxHeight(`${tallest + 16}px`);
+  }, [templates]);
 
   const fetchEvent = async (eventId: string) => {
     const { data, error } = await supabase
@@ -163,6 +183,7 @@ export default function EventDetailPage() {
 
   const handleApplyTemplate = async () => {
     if (!selectedTemplate || !event) return;
+    const templateUrl = templates.find((t) => t.id === event?.template_id)?.url;
 
     setIsApplying(true);
 
@@ -175,6 +196,7 @@ export default function EventDetailPage() {
             filePath: event.image_venue,
             scope: "event",
             templateId: activeTemplate,
+            templateUrl: templateUrl,
           }),
         });
 
@@ -192,6 +214,7 @@ export default function EventDetailPage() {
             filePath: event.hero_image,
             scope: "event",
             templateId: activeTemplate,
+            templateUrl: templateUrl,
           }),
         });
 
@@ -257,7 +280,8 @@ export default function EventDetailPage() {
   const handleFileUpload = async (
     newFile: File | null,
     prevUrl: string | null | undefined,
-    field: "image_venue" | "hero_image"
+    field: "image_venue" | "hero_image",
+    remoteUrl: string | null | undefined
   ): Promise<string | null> => {
     let finalUrl = prevUrl || null;
 
@@ -269,6 +293,7 @@ export default function EventDetailPage() {
             filePath: prevUrl,
             scope: "event",
             templateId: editEvent?.template_id,
+            templateUrl: remoteUrl,
           }),
           headers: { "Content-Type": "application/json" },
         });
@@ -283,6 +308,7 @@ export default function EventDetailPage() {
       formData.append("folder", "event");
       formData.append("scope", "event");
       formData.append("template_id", String(activeTemplate));
+      formData.append("template_url", String(remoteUrl));
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -303,6 +329,7 @@ export default function EventDetailPage() {
   };
 
   const handleSaveEvent = async () => {
+    const templateUrl = templates.find((t) => t.id === event?.template_id)?.url;
     if (!editEvent) return;
     setIsChanged(false);
 
@@ -322,7 +349,8 @@ export default function EventDetailPage() {
     const imageUrl = await handleFileUpload(
       file,
       event?.image_venue,
-      "image_venue"
+      "image_venue",
+      templateUrl
     );
     if (file && !imageUrl) {
       alert("Upload venue image gagal, event tidak disimpan.");
@@ -333,7 +361,8 @@ export default function EventDetailPage() {
     const heroImageUrl = await handleFileUpload(
       heroFile,
       event?.hero_image,
-      "hero_image"
+      "hero_image",
+      templateUrl
     );
     if (heroFile && !heroImageUrl) {
       alert("Upload hero image gagal, event tidak disimpan.");
@@ -452,85 +481,91 @@ export default function EventDetailPage() {
       )}
 
       {/* --- TEMPLATE LIST --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-gray-800 dark:text-white/90">
-        {templates.map((template) => (
-          <Card
-            key={template.id}
-            className={`cursor-pointer transition-all duration-200 hover:shadow-lg bg-white dark:bg-white/[0.03] ${
-              selectedTemplate === template.id
-                ? "ring-2 ring-primary border-primary"
-                : activeTemplate === template.id
-                ? "ring-2 ring-green-500 border-green-500"
-                : "hover:border-primary/50"
-            }`}
-            onClick={() => handleSelectTemplate(template.id)}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    {template.title}
-                    {activeTemplate === template.id && (
-                      <Badge
-                        variant="default"
-                        className="bg-green-500 hover:bg-green-600"
-                      >
-                        <Check className="w-3 h-3 mr-1" />
-                        Active
+      <div
+        ref={containerRef}
+        style={{ maxHeight: isScrollable ? maxHeight : undefined }}
+        className={`${isScrollable ? "overflow-y-auto" : ""}`}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-gray-800 dark:text-white/90 p-2">
+          {templates.map((template) => (
+            <Card
+              key={template.id}
+              className={`template-card cursor-pointer transition-all duration-200 hover:shadow-lg bg-white dark:bg-white/[0.03] ${
+                selectedTemplate === template.id
+                  ? "ring-2 ring-primary border-primary"
+                  : activeTemplate === template.id
+                  ? "ring-2 ring-green-500 border-green-500"
+                  : "hover:border-primary/50"
+              }`}
+              onClick={() => handleSelectTemplate(template.id)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      {template.title}
+                      {activeTemplate === template.id && (
+                        <Badge
+                          variant="default"
+                          className="bg-green-500 hover:bg-green-600"
+                        >
+                          <Check className="w-3 h-3 mr-1" />
+                          Active
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <Badge variant="secondary" className="mt-1 text-xs">
+                      {template.category}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePreviewTemplate(template.id);
+                    }}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                  <Image
+                    src={template.thumbnail || "/placeholder.svg"}
+                    alt={`${template.title} preview`}
+                    width={100}
+                    height={100}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  {template.description}
+                </p>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-foreground">
+                    Features
+                  </label>
+                  <div className="flex flex-wrap gap-1">
+                    {template.features.slice(0, 2).map((feature, index) => (
+                      <Badge key={index} variant="outline" className="text-xs">
+                        {feature}
+                      </Badge>
+                    ))}
+                    {template.features.length > 2 && (
+                      <Badge variant="outline" className="text-xs">
+                        +{template.features.length - 2} more
                       </Badge>
                     )}
-                  </CardTitle>
-                  <Badge variant="secondary" className="mt-1 text-xs">
-                    {template.category}
-                  </Badge>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePreviewTemplate(template.id);
-                  }}
-                >
-                  <Eye className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <Image
-                  src={template.thumbnail || "/placeholder.svg"}
-                  alt={`${template.title} preview`}
-                  width={100}
-                  height={100}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-
-              <p className="text-sm text-muted-foreground">
-                {template.description}
-              </p>
-
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-foreground">
-                  Features
-                </label>
-                <div className="flex flex-wrap gap-1">
-                  {template.features.slice(0, 2).map((feature, index) => (
-                    <Badge key={index} variant="outline" className="text-xs">
-                      {feature}
-                    </Badge>
-                  ))}
-                  {template.features.length > 2 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{template.features.length - 2} more
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* --- APPLY SECTION --- */}
