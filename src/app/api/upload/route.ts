@@ -74,9 +74,10 @@ export async function POST(req: Request) {
       url: localUrl,
       remote: remoteUrl,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Upload error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -107,10 +108,11 @@ export async function GET(req: Request) {
         "Cache-Control": "public, max-age=31536000",
       },
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("GET error:", err);
+    const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: "Failed to fetch image", details: err.message },
+      { error: "Failed to fetch image", details: message },
       { status: 500 }
     );
   }
