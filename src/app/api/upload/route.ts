@@ -29,17 +29,13 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const uploadDir = path.join(process.cwd(), `public/uploads/${folder}`);
-    await mkdir(uploadDir, { recursive: true });
 
     const fileName = `${Date.now()}-${file.name}`;
     formData.append("filename", fileName);
-    const filePath = path.join(uploadDir, fileName);
-    await writeFile(filePath, buffer);
-
-    const localUrl = `/uploads/${folder}/${fileName}`;
 
     let remoteUrl: string | null = null;
+
+    // 🟢 1. Upload ke remote dulu
     if (scope === "event" && templateId) {
       const { data: template, error } = await supabase
         .from("templates")
@@ -55,12 +51,24 @@ export async function POST(req: Request) {
           body: formData,
         });
 
-        if (remoteRes.ok) {
-          const remoteJson = await remoteRes.json();
-          remoteUrl = remoteJson.url ?? null;
+        if (!remoteRes.ok) {
+          const text = await remoteRes.text();
+          throw new Error(`Remote upload failed: ${text}`);
         }
+
+        const remoteJson = await remoteRes.json();
+        remoteUrl = remoteJson.url ?? null;
       }
     }
+
+    // 🟢 2. Kalau remote berhasil → simpan ke lokal
+    const uploadDir = path.join(process.cwd(), `public/uploads/${folder}`);
+    await mkdir(uploadDir, { recursive: true });
+
+    const filePath = path.join(uploadDir, fileName);
+    await writeFile(filePath, buffer);
+
+    const localUrl = `/uploads/${folder}/${fileName}`;
 
     return NextResponse.json({
       url: localUrl,
@@ -75,7 +83,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const file = searchParams.get("file"); // contoh ?file=uploads/merchant/123.png
+    const file = searchParams.get("file");
 
     if (!file) {
       return NextResponse.json({ error: "No file specified" }, { status: 400 });
@@ -90,10 +98,7 @@ export async function GET(req: Request) {
     if (ext === ".gif") contentType = "image/gif";
     if (ext === ".webp") contentType = "image/webp";
 
-    // baca file -> Buffer
     const buffer = await readFile(filePath);
-
-    // convert Buffer ke Uint8Array
     const uint8Array = new Uint8Array(buffer);
 
     return new NextResponse(uint8Array, {
