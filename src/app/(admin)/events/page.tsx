@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/context/UserContext";
 import BasicTableOne from "@/components/table/BasicTableOne";
@@ -53,6 +53,7 @@ export default function EventPage() {
 
   useEffect(() => {
     fetchEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   useEffect(() => {
@@ -212,13 +213,15 @@ export default function EventPage() {
     <>
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="flex justify-between items-center w-full px-6 pt-5">
-          <h1 className="text-xl font-bold mb-4">List Event</h1>
+          <h1 className="text-xl font-bold mb-4 text-gray-800 dark:text-white/90">
+            List Event
+          </h1>
           <div className="flex gap-2">
             {/* ✅ Input Search + Button */}
             <input
               type="text"
               placeholder="Search event..."
-              className="border rounded px-3 py-2"
+              className="border rounded px-3 py-2 border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] text-gray-800 dark:text-white/90"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -251,7 +254,6 @@ export default function EventPage() {
         </div>
       </div>
 
-      {/* Modal Add & Edit tetap sama */}
       {/* Modal Tambah Event */}
       {showAddModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">

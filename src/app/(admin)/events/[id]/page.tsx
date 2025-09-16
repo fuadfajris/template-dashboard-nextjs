@@ -15,6 +15,21 @@ import {
   Palette,
   X,
 } from "lucide-react";
+import Image from "next/image";
+
+type Feature = {
+  feature_name: string;
+};
+
+type RawTemplate = {
+  id: number;
+  title: string;
+  category: string;
+  thumbnail: string | null;
+  description: string | null;
+  url: string | null;
+  features?: Feature[];
+};
 
 type Template = {
   id: number;
@@ -23,7 +38,6 @@ type Template = {
   thumbnail: string | null;
   description: string | null;
   url: string | null;
-  feature_id: number | null;
   features: string[];
 };
 
@@ -37,6 +51,7 @@ type Event = {
   capacity?: number | null;
   status?: boolean | null;
   image_venue?: string | null;
+  hero_image?: string | null;
   template_id?: number | null;
 };
 
@@ -48,15 +63,16 @@ export default function EventDetailPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
   const [activeTemplate, setActiveTemplate] = useState<number | null>(null);
   const [isApplying, setIsApplying] = useState(false);
-
   // preview modal state
   const [showPreview, setShowPreview] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<number | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editEvent, setEditEvent] = useState<Event | null>(null);
   const [file, setFile] = useState<File | null>(null);
-
+  const [heroFile, setHeroFile] = useState<File | null>(null);
   const [isChanged, setIsChanged] = useState(false);
+  const venueInputRef = useRef<HTMLInputElement | null>(null);
+  const heroInputRef = useRef<HTMLInputElement | null>(null);
 
   // fetch data event & template
   useEffect(() => {
@@ -78,10 +94,11 @@ export default function EventDetailPage() {
       editEvent.end_date?.split("T")[0] !== event.end_date?.split("T")[0] ||
       editEvent.capacity !== event.capacity ||
       editEvent.status !== event.status ||
-      !!file; // ada file baru → dianggap berubah
+      !!file ||
+      !!heroFile;
 
     setIsChanged(hasChanged);
-  }, [editEvent, event, file]);
+  }, [editEvent, event, file, heroFile]);
 
   const fetchEvent = async (eventId: string) => {
     const { data, error } = await supabase
@@ -107,16 +124,16 @@ export default function EventDetailPage() {
       .from("templates")
       .select(
         `
-    id,
-    title,
-    category,
-    thumbnail,
-    description,
-    url,
-    features:features(
-      feature_name
-    )
-  `
+        id,
+        title,
+        category,
+        thumbnail,
+        description,
+        url,
+        features:features(
+          feature_name
+        )
+      `
       )
       .order("id", { ascending: true });
 
@@ -125,10 +142,14 @@ export default function EventDetailPage() {
       return;
     }
 
-    // hanya ubah mapping features
-    const mapped = (data || []).map((t: any) => ({
-      ...t,
-      features: t.features ? t.features.map((f: any) => f.feature_name) : [],
+    const mapped: Template[] = (data as RawTemplate[]).map((t) => ({
+      id: t.id,
+      title: t.title,
+      category: t.category,
+      thumbnail: t.thumbnail,
+      description: t.description,
+      url: t.url,
+      features: t.features ? t.features.map((f) => f.feature_name) : [],
     }));
 
     setTemplates(mapped);
@@ -139,28 +160,83 @@ export default function EventDetailPage() {
   };
 
   const handleApplyTemplate = async () => {
+    console.log("event : ", event);
     if (!selectedTemplate || !event) return;
+    console.log("event 2");
 
     setIsApplying(true);
 
-    const { error } = await supabase
-      .from("events")
-      .update({
+    try {
+      if (event.image_venue) {
+        const res = await fetch("/api/delete-file", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filePath: event.image_venue,
+            scope: "event",
+            templateId: activeTemplate,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to delete image_venue file");
+        }
+      }
+
+      if (event.hero_image) {
+        const res = await fetch("/api/delete-file", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filePath: event.hero_image,
+            scope: "event",
+            templateId: activeTemplate,
+          }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to delete hero_image file");
+        }
+      }
+
+      const { error } = await supabase
+        .from("events")
+        .update({
+          template_id: selectedTemplate,
+          image_venue: null,
+          hero_image: null,
+        })
+        .eq("id", event.id);
+
+      if (error) throw new Error(error.message);
+
+      setActiveTemplate(selectedTemplate);
+      setEvent({
+        ...event,
         template_id: selectedTemplate,
-      })
-      .eq("id", event.id);
+        image_venue: null,
+        hero_image: null,
+      });
 
-    if (error) {
-      console.error("Failed to apply template:", error.message);
+      alert("Template applied successfully!");
+      fetchEvent(id as string);
+      setFile(null);
+      setHeroFile(null);
+      if (venueInputRef.current) venueInputRef.current.value = "";
+      if (heroInputRef.current) heroInputRef.current.value = "";
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error("Failed to apply template:", err);
+        alert(`Failed: ${err.message}`);
+      } else {
+        console.error("Unknown error:", err);
+        alert("Failed: An unknown error occurred");
+      }
+    } finally {
       setIsApplying(false);
-      alert("Failed to apply template");
-      return;
     }
-
-    setActiveTemplate(selectedTemplate);
-    setIsApplying(false);
-    setEvent({ ...event, template_id: selectedTemplate });
-    alert("Template applied successfully!");
   };
 
   const handlePreviewTemplate = (templateId: number) => {
@@ -178,8 +254,57 @@ export default function EventDetailPage() {
     setIsFullscreen((prev) => !prev);
   };
 
+  const handleFileUpload = async (
+    newFile: File | null,
+    prevUrl: string | null | undefined,
+    field: "image_venue" | "hero_image"
+  ): Promise<string | null> => {
+    let finalUrl = prevUrl || null;
+
+    if (newFile) {
+      if (prevUrl?.startsWith("/uploads/event/")) {
+        const delRes = await fetch("/api/delete-file", {
+          method: "POST",
+          body: JSON.stringify({
+            filePath: prevUrl,
+            scope: "event",
+            templateId: editEvent?.template_id,
+          }),
+          headers: { "Content-Type": "application/json" },
+        });
+
+        if (!delRes.ok) {
+          return null;
+        }
+      }
+
+      const formData = new FormData();
+      formData.append("file", newFile);
+      formData.append("folder", "event");
+      formData.append("scope", "event");
+      formData.append("template_id", String(activeTemplate));
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const errRes = await res.json();
+        alert(errRes.error || `Upload ${field} failed`);
+        setIsChanged(true);
+        return prevUrl || null;
+      }
+
+      const { url } = await res.json();
+      finalUrl = url;
+    }
+
+    return finalUrl;
+  };
+
   const handleSaveEvent = async () => {
     if (!editEvent) return;
+    setIsChanged(false);
 
     // ✅ Validasi field kosong
     if (
@@ -194,39 +319,26 @@ export default function EventDetailPage() {
       return;
     }
 
-    let imageUrl = event?.image_venue;
+    const imageUrl = await handleFileUpload(
+      file,
+      event?.image_venue,
+      "image_venue"
+    );
+    if (file && !imageUrl) {
+      alert("Upload venue image gagal, event tidak disimpan.");
+      setIsChanged(true);
+      return;
+    }
 
-    if (file) {
-      if (event?.image_venue?.startsWith("/uploads/event/")) {
-        await fetch("/api/delete-file", {
-          method: "POST",
-          body: JSON.stringify({
-            filePath: event?.image_venue,
-            scope: "event",
-            templateId: editEvent.template_id,
-          }),
-          headers: { "Content-Type": "application/json" },
-        });
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("folder", "event");
-      formData.append("scope", "event");
-      formData.append("template_id", "1");
-
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const errRes = await res.json();
-        alert(errRes.error || "Upload failed");
-        return;
-      }
-
-      const { url } = await res.json();
-      imageUrl = url;
+    const heroImageUrl = await handleFileUpload(
+      heroFile,
+      event?.hero_image,
+      "hero_image"
+    );
+    if (heroFile && !heroImageUrl) {
+      alert("Upload hero image gagal, event tidak disimpan.");
+      setIsChanged(true);
+      return;
     }
 
     const { error } = await supabase
@@ -240,15 +352,22 @@ export default function EventDetailPage() {
         capacity: editEvent.capacity,
         status: editEvent.status,
         image_venue: imageUrl,
+        hero_image: heroImageUrl,
       })
       .eq("id", editEvent.id);
 
     if (error) {
       console.error("Failed to update event:", error.message);
+      setIsChanged(true);
       return;
     }
 
     alert("Event updated successfully!");
+    fetchEvent(id as string);
+    setFile(null);
+    setHeroFile(null);
+    if (venueInputRef.current) venueInputRef.current.value = "";
+    if (heroInputRef.current) heroInputRef.current.value = "";
   };
 
   if (!event) return <p className="text-muted-foreground">Loading...</p>;
@@ -330,7 +449,7 @@ export default function EventDetailPage() {
         {templates.map((template) => (
           <Card
             key={template.id}
-            className={`cursor-pointer transition-all duration-200 hover:shadow-lg ${
+            className={`cursor-pointer transition-all duration-200 hover:shadow-lg bg-white dark:bg-white/[0.03] ${
               selectedTemplate === template.id
                 ? "ring-2 ring-primary border-primary"
                 : activeTemplate === template.id
@@ -372,9 +491,11 @@ export default function EventDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                <img
+                <Image
                   src={template.thumbnail || "/placeholder.svg"}
                   alt={`${template.title} preview`}
+                  width={100}
+                  height={100}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -407,14 +528,14 @@ export default function EventDetailPage() {
 
       {/* --- APPLY SECTION --- */}
       {selectedTemplate && (
-        <Card className="border-primary/20 bg-primary/5 mt-6">
+        <Card className="border-primary/20 bg-primary/5 mt-6 bg-white dark:bg-white/[0.03]">
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-semibold">
-                  Apply "
-                  {templates.find((t) => t.id === selectedTemplate)?.title}"
-                  Template
+                  {`Apply "${
+                    templates.find((t) => t.id === selectedTemplate)?.title
+                  }" Template`}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
                   This will replace your current website design with the
@@ -424,6 +545,7 @@ export default function EventDetailPage() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
+                  className="bg-gray-800 dark:bg-white dark:text-gray-800 text-white/90"
                   onClick={() => handlePreviewTemplate(selectedTemplate)}
                 >
                   <Globe className="w-4 h-4 mr-2" />
@@ -446,8 +568,10 @@ export default function EventDetailPage() {
         </Card>
       )}
 
-      <div className="bg-white p-6 rounded-lg mt-5 grid gap-4">
-        <h2 className="text-lg font-bold mb-4 col-span-12">Edit Event</h2>
+      <div className="p-6 rounded-lg mt-5 grid gap-4 border border-primary/20 bg-primary/5 bg-white dark:bg-white/[0.03]">
+        <h2 className="text-lg font-bold mb-4 col-span-12 text-gray-800 dark:text-white/90">
+          Edit Event
+        </h2>
 
         {/* Name & Location */}
         <input
@@ -518,45 +642,85 @@ export default function EventDetailPage() {
           }
         />
 
-        {/* Upload Image with Preview */}
+        {/* Venue Image */}
         <div className="col-span-12 grid grid-cols-12 gap-4 items-start">
           <div className="col-span-12 lg:col-span-6">
             <input
               type="file"
+              ref={venueInputRef}
               accept="image/*"
               className="w-full border rounded-lg p-2 mb-2"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const previewUrl = URL.createObjectURL(file);
-                  setFile(file);
+                const f = e.target.files?.[0] || null;
+                if (f) {
+                  setFile(f);
                   setEditEvent((prev) =>
-                    prev ? { ...prev, image_venue: previewUrl } : null
+                    prev
+                      ? { ...prev, image_venue: URL.createObjectURL(f) }
+                      : null
                   );
-                } else {
-                  console.log("else file");
                 }
               }}
             />
           </div>
-
-          {/* Image Preview */}
           <div className="col-span-12 lg:col-span-6 flex items-center">
             {editEvent?.image_venue ? (
-              <img
+              <Image
                 src={
                   editEvent.image_venue.startsWith("blob:")
-                    ? editEvent.image_venue
-                    : editEvent.image_venue.startsWith("/uploads")
                     ? editEvent.image_venue
                     : `/api/upload?file=${editEvent.image_venue}`
                 }
                 alt="Event Preview"
-                className="w-full h-40 object-cover rounded-lg border"
+                width={100}
+                height={100}
+                className="w-auto h-40 object-cover rounded-lg border"
               />
             ) : (
               <div className="w-full h-40 flex items-center justify-center border rounded-lg text-gray-400">
                 No Image
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Hero Image */}
+        <div className="col-span-12 grid grid-cols-12 gap-4 items-start">
+          <div className="col-span-12 lg:col-span-6">
+            <input
+              ref={heroInputRef}
+              type="file"
+              accept="image/*"
+              className="w-full border rounded-lg p-2 mb-2"
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                if (f) {
+                  setHeroFile(f);
+                  setEditEvent((prev) =>
+                    prev
+                      ? { ...prev, hero_image: URL.createObjectURL(f) }
+                      : null
+                  );
+                }
+              }}
+            />
+          </div>
+          <div className="col-span-12 lg:col-span-6 flex items-center">
+            {editEvent?.hero_image ? (
+              <Image
+                src={
+                  editEvent.hero_image.startsWith("blob:")
+                    ? editEvent.hero_image
+                    : `/api/upload?file=${editEvent.hero_image}`
+                }
+                alt="Hero Preview"
+                width={100}
+                height={100}
+                className="w-auto h-40 object-cover rounded-lg border"
+              />
+            ) : (
+              <div className="w-full h-40 flex items-center justify-center border rounded-lg text-gray-400">
+                No Hero Image
               </div>
             )}
           </div>
