@@ -60,7 +60,6 @@ export default function BasicTableOne<T extends TableRow>({
     });
   }, [rows, sortConfig]);
 
-  const totalPages = Math.ceil(sortedRows.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
   const currentRows = sortedRows.slice(startIndex, startIndex + pageSize);
 
