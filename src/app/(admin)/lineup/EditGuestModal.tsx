@@ -112,26 +112,26 @@ export default function EditGuestModal({
   if (!open || !form) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">Edit Lineup Schedule</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 dark:bg-white/25">
+      <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Edit Lineup Schedule</h2>
 
         {/* Lineup info (non-editable) */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-600">
+          <label className="block text-sm font-medium text-gray-800 dark:text-white">
             Lineup
           </label>
           <input
             type="text"
             value={`${form.name}`}
             disabled
-            className="w-full border p-2 rounded bg-gray-100 text-gray-600"
+            className="w-full border p-2 text-gray-800 dark:text-white rounded-lg"
           />
         </div>
 
         {/* Date */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-600">
+          <label className="block text-sm font-medium text-gray-800 dark:text-white">
             Date
           </label>
           <input
@@ -140,46 +140,46 @@ export default function EditGuestModal({
             min={formatDate(eventRange?.start)}
             max={formatDate(eventRange?.end)}
             onChange={(e) => handleChange("schedule_date", e.target.value)}
-            className="w-full border p-2 rounded"
+            className="w-full border p-2 rounded-lg bg-input"
           />
         </div>
 
         {/* Start & End Time */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-600">
+            <label className="block text-sm font-medium text-gray-800 dark:text-white">
               Start Time
             </label>
             <input
               type="time"
               value={form.start_time}
               onChange={(e) => handleChange("start_time", e.target.value)}
-              className="w-full border p-2 rounded"
+              className="w-full border p-2 rounded-lg bg-input"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-600">
+            <label className="block text-sm font-medium text-gray-800 dark:text-white">
               End Time
             </label>
             <input
               type="time"
               value={form.end_time}
               onChange={(e) => handleChange("end_time", e.target.value)}
-              className="w-full border p-2 rounded"
+              className="w-full border p-2 rounded-lg bg-input"
             />
           </div>
         </div>
 
         {/* Stage */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-600">
+          <label className="block text-sm font-medium text-gray-800 dark:text-white">
             Stage
           </label>
           <input
             type="text"
             value={form.stage}
             onChange={(e) => handleChange("stage", e.target.value)}
-            className="w-full border p-2 rounded"
+            className="w-full border p-2 rounded-lg bg-input"
           />
         </div>
 

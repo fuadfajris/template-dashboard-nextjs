@@ -126,7 +126,7 @@ export default function AddGuestModal({
       <Transition appear show={isOpen} as={Fragment}>
         <Dialog
           as="div"
-          className="relative z-10"
+          className="relative z-50"
           onClose={() => setIsOpen(false)}
         >
           <Transition.Child
@@ -138,7 +138,7 @@ export default function AddGuestModal({
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-black/25" />
+            <div className="fixed inset-0 bg-black/25 dark:bg-white/25" />
           </Transition.Child>
 
           <div className="fixed inset-0 flex items-center justify-center p-4">
@@ -151,20 +151,20 @@ export default function AddGuestModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md p-6 bg-white rounded-2xl shadow-lg">
-                <Dialog.Title className="text-lg font-medium text-gray-900">
+              <Dialog.Panel className="w-full max-w-md p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg">
+                <Dialog.Title className="text-lg font-medium text-gray-800 dark:text-white">
                   Add Lineup to Schedule
                 </Dialog.Title>
 
                 {/* Dropdown Lineup */}
                 <div className="mt-4">
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                  <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-white">
                     Lineup
                   </label>
                   <select
                     value={selectedGuest}
                     onChange={(e) => setSelectedGuest(e.target.value)}
-                    className="w-full border rounded-lg p-2"
+                    className="w-full border rounded-lg p-2 bg-white text-gray-800  dark:border-gray-700"
                   >
                     <option value="">-- Select --</option>
                     {guests.map((g) => (
@@ -177,7 +177,7 @@ export default function AddGuestModal({
 
                 {/* Date */}
                 <div className="mt-4">
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                  <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-white">
                     Date
                   </label>
                   <input
@@ -186,25 +186,25 @@ export default function AddGuestModal({
                     min={formatDate(eventRange?.start)}
                     max={formatDate(eventRange?.end)}
                     onChange={handleDateChange}
-                    className="w-full border rounded-lg p-2"
+                    className="w-full border rounded-lg p-2 bg-input"
                   />
                 </div>
 
                 {/* Start & End */}
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-white">
                       Start Time
                     </label>
                     <input
                       type="time"
                       value={start}
                       onChange={(e) => setStart(e.target.value)}
-                      className="w-full border rounded-lg p-2"
+                      className="w-full border rounded-lg p-2 bg-input"
                     />
                   </div>
                   <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">
+                    <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-white">
                       End Time
                     </label>
                     <input
@@ -212,21 +212,21 @@ export default function AddGuestModal({
                       value={end}
                       onChange={(e) => setEnd(e.target.value)}
                       onBlur={(e) => e.target.blur()}
-                      className="w-full border rounded-lg p-2"
+                      className="w-full border rounded-lg p-2 bg-input"
                     />
                   </div>
                 </div>
 
                 {/* Stage */}
                 <div className="mt-4">
-                  <label className="block mb-1 text-sm font-medium text-gray-700">
+                  <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-white">
                     Stage
                   </label>
                   <input
                     type="text"
                     value={stage}
                     onChange={(e) => setStage(e.target.value)}
-                    className="w-full border rounded-lg p-2"
+                    className="w-full border rounded-lg p-2 bg-input"
                     placeholder="e.g. Main Stage"
                   />
                 </div>

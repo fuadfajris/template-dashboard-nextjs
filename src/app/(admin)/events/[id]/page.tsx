@@ -111,15 +111,24 @@ export default function EventDetailPage() {
     const cards =
       containerRef.current.querySelectorAll<HTMLDivElement>(".template-card");
 
+    if (cards.length === 0) return;
+
     const heights: number[] = [];
-    cards.forEach((card, i) => {
-      if (i < 3) heights.push(card.offsetHeight);
+
+    const observer = new ResizeObserver(() => {
+      heights.length = 0;
+      cards.forEach((card, i) => {
+        if (i < 3) heights.push(card.offsetHeight);
+      });
+      const tallest = Math.max(...heights, 0);
+
+      setIsScrollable(cards.length > 3);
+      setMaxHeight(`${tallest + 16}px`);
     });
 
-    const tallest = Math.max(...heights, 0);
+    cards.forEach((card) => observer.observe(card));
 
-    setIsScrollable(cards.length > 3);
-    setMaxHeight(`${tallest + 16}px`);
+    return () => observer.disconnect();
   }, [templates]);
 
   const fetchEvent = async (eventId: string) => {
@@ -422,7 +431,7 @@ export default function EventDetailPage() {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white/90">
                 Preview:{" "}
                 {templates.find((t) => t.id === previewTemplate)?.title}
               </h3>
@@ -452,7 +461,7 @@ export default function EventDetailPage() {
                   const eventId = event?.id ?? "";
                   const merchantId = user?.id;
 
-                  return `${templateUrl}?event_id=${eventId}&merchant_id=${merchantId}`;
+                  return `${templateUrl}?event_id=${eventId}&merchant_id=${merchantId}&edit=true`;
                 })()}
                 className="w-full h-full"
                 title="Template Preview"
@@ -466,6 +475,7 @@ export default function EventDetailPage() {
                 Close Preview
               </Button>
               <Button
+                className="text-gray-800 dark:text-white/90"
                 onClick={() => {
                   if (previewTemplate) {
                     handleSelectTemplate(previewTemplate);

@@ -334,7 +334,7 @@ const Sidebar: React.FC = () => {
                     width={32}
                     height={32}
                   />
-                  <span className="font-bold text-sm">{user?.name}</span>
+                  <span className="font-bold text-sm text-gray-800 dark:text-white/90">{user?.name}</span>
                 </>
               )}
             </>

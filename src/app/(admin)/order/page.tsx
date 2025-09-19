@@ -80,15 +80,16 @@ export default function OrderPage() {
     fetchEvents();
   }, [user]);
 
-  const fetchOrder = useCallback(async (search?: string) => {
-    if (!eventId) return;
-    setLoadingOrders(true);
+  const fetchOrder = useCallback(
+    async (search?: string) => {
+      if (!eventId) return;
+      setLoadingOrders(true);
 
-    // Ambil semua orders dengan relasi users
-    const { data, error } = await supabase
-      .from("orders")
-      .select(
-        `
+      // Ambil semua orders dengan relasi users
+      const { data, error } = await supabase
+        .from("orders")
+        .select(
+          `
         id,
         order_date,
         status,
@@ -100,46 +101,48 @@ export default function OrderPage() {
           phone
         )
       `
-      )
-      .eq("event_id", eventId)
-      .order("order_date", { ascending: true });
+        )
+        .eq("event_id", eventId)
+        .order("order_date", { ascending: true });
 
-    setLoadingOrders(false);
+      setLoadingOrders(false);
 
-    if (error) {
-      console.error("Supabase error:", error.message);
-      return;
-    }
-
-    if (data) {
-      // Mapping hasil orders
-      let mapped: Order[] = data.map((o: any) => ({
-        id: o.id,
-        order_date: o.order_date,
-        status: o.status,
-        quantity: o.quantity,
-        price: o.price,
-        user: {
-          name: o.users?.name ?? "-",
-          email: o.users?.email ?? "-",
-          phone: o.users?.phone ?? "-",
-        },
-      }));
-
-      // 🔍 Filtering di client-side
-      if (search && search.trim() !== "") {
-        const term = search.trim().toLowerCase();
-        mapped = mapped.filter(
-          (o) =>
-            o.user.name.toLowerCase().includes(term) ||
-            o.user.email.toLowerCase().includes(term) ||
-            o.user.phone.toLowerCase().includes(term)
-        );
+      if (error) {
+        console.error("Supabase error:", error.message);
+        return;
       }
 
-      setOrders(mapped);
-    }
-  }, [eventId]);
+      if (data) {
+        // Mapping hasil orders
+        let mapped: Order[] = data.map((o: any) => ({
+          id: o.id,
+          order_date: o.order_date,
+          status: o.status,
+          quantity: o.quantity,
+          price: o.price,
+          user: {
+            name: o.users?.name ?? "-",
+            email: o.users?.email ?? "-",
+            phone: o.users?.phone ?? "-",
+          },
+        }));
+
+        // 🔍 Filtering di client-side
+        if (search && search.trim() !== "") {
+          const term = search.trim().toLowerCase();
+          mapped = mapped.filter(
+            (o) =>
+              o.user.name.toLowerCase().includes(term) ||
+              o.user.email.toLowerCase().includes(term) ||
+              o.user.phone.toLowerCase().includes(term)
+          );
+        }
+
+        setOrders(mapped);
+      }
+    },
+    [eventId]
+  );
 
   // Auto fetch ketika event berubah
   useEffect(() => {
@@ -285,7 +288,9 @@ export default function OrderPage() {
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] mb-5">
-        <h1 className="text-xl font-bold px-6 pt-5">Order Trend</h1>
+        <h1 className="text-xl font-bold px-6 pt-5 text-gray-800 dark:text-white/90">
+          Order Trend
+        </h1>
         <div className="grid grid-cols-1 md:grid-cols-6 gap-6 px-6 py-5">
           <div className="md:col-span-4">
             <ReactApexChart
@@ -299,27 +304,21 @@ export default function OrderPage() {
           <div className="md:col-span-2 overflow-x-auto pb-4">
             <div className="flex md:flex-col flex-row gap-4 md:gap-4 flex-nowrap">
               <div className="rounded-xl p-4 bg-gray-50 dark:bg-gray-900/30 shadow-sm flex-1 min-w-[180px]">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Total Orders
-                </p>
-                <p className="text-xl font-bold text-gray-700 dark:text-gray-200">
+                <p className="text-sm text-gray-400">Total Orders</p>
+                <p className="text-xl font-bold text-gray-800 dark:text-white/90">
                   {orders.length}
                 </p>
               </div>
 
               <div className="rounded-xl p-4 bg-[#465FFF]/10 shadow-sm flex-1 min-w-[180px]">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Total Quantity
-                </p>
+                <p className="text-sm text-gray-400">Total Quantity</p>
                 <p className="text-xl font-bold text-[#465FFF]">
                   {orders.reduce((acc, o) => acc + o.quantity, 0)}
                 </p>
               </div>
 
               <div className="rounded-xl p-4 bg-[#2ECC71]/10 shadow-sm flex-1 min-w-[180px]">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Total Revenue
-                </p>
+                <p className="text-sm text-gray-400">Total Revenue</p>
                 <p className="text-xl font-bold text-[#2ECC71]">
                   Rp{" "}
                   {orders
@@ -335,11 +334,11 @@ export default function OrderPage() {
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] mb-5 px-6 py-5">
         {/* Search */}
         {eventId && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-col md:flex-row gap-2 mb-4">
             <input
               type="text"
               placeholder="Search by name/email/phone..."
-              className="border rounded px-3 py-2 w-64"
+              className="border rounded px-3 py-2 border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] text-gray-800 dark:text-white/90"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => {
@@ -412,26 +411,28 @@ export default function OrderPage() {
           />
           <div className="relative z-10 w-[95vw] max-w-5xl rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">
-                Detail Order #{selectedOrder?.id}
+              <h2 className="text-lg font-semibold text-gray-800 dark:text-white/90">
+                Detail Order
               </h2>
               <button
                 onClick={() => setIsDetailOpen(false)}
-                className="rounded px-2 py-1 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700"
+                className="rounded px-2 py-1 text-sm bg-gray-200 hover:bg-gray-300 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white/90"
               >
                 Close
               </button>
             </div>
 
-            <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            <div className="mt-2 text-sm text-gray-800 dark:text-gray-400">
               Order Date: {selectedOrder?.order_date.split("T")[0]}
             </div>
 
             <div className="mt-4">
               {loadingDetail ? (
-                <p className="text-sm text-gray-500">Loading details...</p>
+                <p className="text-sm text-gray-800 dark:text-wrap/90">
+                  Loading details...
+                </p>
               ) : detailRows.length === 0 ? (
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-800 dark:text-white/90">
                   No ticket details available.
                 </p>
               ) : (

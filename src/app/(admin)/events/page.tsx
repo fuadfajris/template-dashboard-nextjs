@@ -212,11 +212,11 @@ export default function EventPage() {
   return (
     <>
       <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-        <div className="flex justify-between items-center w-full px-6 pt-5">
+        <div className="flex flex-col md:flex-row justify-between items-center w-full px-6 pt-5">
           <h1 className="text-xl font-bold mb-4 text-gray-800 dark:text-white/90">
             List Event
           </h1>
-          <div className="flex gap-2">
+          <div className="flex flex-col justify-end md:flex-row gap-2 w-full md:w-fit">
             {/* ✅ Input Search + Button */}
             <input
               type="text"
@@ -257,66 +257,76 @@ export default function EventPage() {
       {/* Modal Tambah Event */}
       {showAddModal && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg w-96">
-            <h2 className="text-lg font-bold mb-4">Tambah Event</h2>
-            <input
-              type="text"
-              placeholder="Event Name"
-              className="w-full border p-2 mb-2"
-              value={newEvent.name}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, name: e.target.value })
-              }
-            />
-            <input
-              type="text"
-              placeholder="Description"
-              className="w-full border p-2 mb-2"
-              value={newEvent.description}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, description: e.target.value })
-              }
-            />
-            <input
-              type="text"
-              placeholder="Location"
-              className="w-full border p-2 mb-2"
-              value={newEvent.location}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, location: e.target.value })
-              }
-            />
-            <input
-              type="date"
-              className="w-full border p-2 mb-2"
-              value={newEvent.start_date}
-              min={new Date().toISOString().split("T")[0]} // ✅ minimal hari ini
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, start_date: e.target.value })
-              }
-            />
-            <input
-              type="date"
-              className="w-full border p-2 mb-2"
-              value={newEvent.end_date}
-              min={
-                newEvent.start_date || new Date().toISOString().split("T")[0]
-              } // ✅ minimal sama dengan start_date
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, end_date: e.target.value })
-              }
-            />
+          <div className="w-full max-w-4xl p-6 rounded-lg bg-primary/5 bg-white dark:bg-gray-800">
+            <div className="grid gap-4 max-h-[calc(90vh-3rem)] overflow-y-auto pr-2">
+              <h2 className="text-lg font-bold mb-4 col-span-12 text-gray-800 dark:text-white/90">
+                Tambah Event
+              </h2>
 
-            <div className="p-2 mb-2">
+              {/* Name and Location */}
               <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="w-full"
+                type="text"
+                placeholder="Event Name"
+                className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
+                value={newEvent.name}
+                onChange={(e) =>
+                  setNewEvent({ ...newEvent, name: e.target.value })
+                }
               />
-              {(preview || newEvent.image_venue) && (
-                <div className="flex items-center gap-3 mt-2">
-                  <div className="w-16 h-16 relative overflow-hidden border">
+              <input
+                type="text"
+                placeholder="Location"
+                className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
+                value={newEvent.location}
+                onChange={(e) =>
+                  setNewEvent({ ...newEvent, location: e.target.value })
+                }
+              />
+
+              {/* Description */}
+              <textarea
+                placeholder="Description"
+                className="w-full border rounded-lg p-2 mb-2 col-span-12 h-32 resize-y bg-input"
+                value={newEvent.description}
+                onChange={(e) =>
+                  setNewEvent({ ...newEvent, description: e.target.value })
+                }
+              />
+
+              {/* Start and End Date */}
+              <input
+                type="date"
+                className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
+                value={newEvent.start_date}
+                min={new Date().toISOString().split("T")[0]} // ✅ minimal hari ini
+                onChange={(e) =>
+                  setNewEvent({ ...newEvent, start_date: e.target.value })
+                }
+              />
+              <input
+                type="date"
+                className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
+                value={newEvent.end_date}
+                min={
+                  newEvent.start_date || new Date().toISOString().split("T")[0]
+                } // ✅ minimal sama dengan start_date
+                onChange={(e) =>
+                  setNewEvent({ ...newEvent, end_date: e.target.value })
+                }
+              />
+
+              {/* Image */}
+              <div className="col-span-12 grid grid-cols-12 gap-4 items-start">
+                <div className="col-span-12 lg:col-span-6">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
+                  />
+                </div>
+                <div className="col-span-12 lg:col-span-6 flex items-center">
+                  {(preview || newEvent.image_venue) && (
                     <Image
                       src={
                         preview
@@ -326,50 +336,54 @@ export default function EventPage() {
                           : "/api/upload?file=/uploads/event/placeholder.png"
                       }
                       alt="preview"
-                      fill
-                      className="object-cover"
+                      width={100}
+                      height={100}
+                      className="w-auto h-40 object-cover rounded-lg"
                     />
-                  </div>
-                  <div className="text-sm text-gray-500">Preview</div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
 
-            <input
-              type="number"
-              placeholder="Capacity"
-              className="w-full border p-2 mb-2"
-              value={newEvent.capacity}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, capacity: e.target.value })
-              }
-            />
-
-            {/* ✅ Select status */}
-            <select
-              className="w-full border p-2 mb-2"
-              value={newEvent.status ? "true" : "false"}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, status: e.target.value === "true" })
-              }
-            >
-              <option value="true">Active</option>
-              <option value="false">Nonactive</option>
-            </select>
-
-            <div className="flex justify-end gap-2">
-              <button
-                className="px-4 py-2 bg-gray-400 text-white rounded"
-                onClick={() => setShowAddModal(false)}
+              {/* Capacity and Status */}
+              <input
+                type="number"
+                placeholder="Capacity"
+                className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
+                value={newEvent.capacity}
+                onChange={(e) =>
+                  setNewEvent({ ...newEvent, capacity: e.target.value })
+                }
+              />
+              <select
+                className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
+                value={newEvent.status ? "true" : "false"}
+                onChange={(e) =>
+                  setNewEvent({
+                    ...newEvent,
+                    status: e.target.value === "true",
+                  })
+                }
               >
-                Cancel
-              </button>
-              <button
-                className="px-4 py-2 bg-green-600 text-white rounded"
-                onClick={handleAddEvent}
-              >
-                Save
-              </button>
+                <option value="true">Active</option>
+                <option value="false">Nonactive</option>
+              </select>
+
+              <div className="col-span-12">
+                <div className="flex justify-end gap-2">
+                  <button
+                    className="px-4 py-2 bg-gray-400 text-white rounded"
+                    onClick={() => setShowAddModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="px-4 py-2 bg-green-600 text-white rounded"
+                    onClick={handleAddEvent}
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
