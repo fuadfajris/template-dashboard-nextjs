@@ -333,7 +333,7 @@ export default function EventPage() {
                           ? preview
                           : newEvent.image_venue
                           ? `/api/upload?file=${newEvent.image_venue}`
-                          : "/api/upload?file=/uploads/event/placeholder.png"
+                          : "/api/upload?file=/uploads/event/placeholder.jpg"
                       }
                       alt="preview"
                       width={100}
@@ -364,8 +364,8 @@ export default function EventPage() {
                   })
                 }
               >
-                <option value="true">Active</option>
-                <option value="false">Nonactive</option>
+                <option value="true" className="!text-gray-800">Active</option>
+                <option value="false" className="!text-gray-800">Nonactive</option>
               </select>
 
               <div className="col-span-12">

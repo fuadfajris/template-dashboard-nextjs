@@ -166,7 +166,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-xl mx-auto p-6">
-      <div className="rounded-2xl border p-6 bg-white dark:bg-gray-900 dark:border-gray-800 shadow">
+      <div className="p-6 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="flex flex-col items-center gap-4">
           {merchant.logo ? (
             <Image
@@ -183,7 +183,7 @@ export default function ProfilePage() {
           )}
 
           <div className="text-center">
-            <div className="text-lg font-semibold">{merchant.name}</div>
+            <div className="text-lg font-semibold text-gray-800 dark:text-white/90">{merchant.name}</div>
             <div className="text-sm text-gray-500">{merchant.email}</div>
             <div className="text-xs text-gray-400">
               Joined {new Date(merchant.created_at).toLocaleDateString()}
@@ -203,7 +203,7 @@ export default function ProfilePage() {
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-lg">
-            <h3 className="text-lg font-semibold mb-3">Edit Merchant</h3>
+            <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white/90">Edit Merchant</h3>
 
             {err && (
               <div className="mb-3 text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -213,13 +213,13 @@ export default function ProfilePage() {
 
             <div className="space-y-3">
               <input
-                className="w-full p-2 rounded border"
+                className="w-full p-2 rounded border bg-input"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Name"
               />
               <input
-                className="w-full p-2 rounded border"
+                className="w-full p-2 rounded border bg-input"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
@@ -229,7 +229,7 @@ export default function ProfilePage() {
                 type="file"
                 accept="image/*"
                 onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
-                className="w-full"
+                className="w-full border rounded-lg p-2 mb-2 bg-input"
               />
 
               {(preview || merchant.logo) && (
@@ -241,14 +241,14 @@ export default function ProfilePage() {
                           ? preview // local preview
                           : merchant.logo
                           ? `/api/upload?file=${merchant.logo}` // ✅ via API
-                          : "/api/upload?file=/uploads/merchant/placeholder.png"
+                          : "/api/upload?file=/uploads/merchant/placeholder.jpg"
                       }
                       alt="preview"
                       fill
                       className="object-cover"
                     />
                   </div>
-                  <div className="text-sm text-gray-500">Preview</div>
+                  <div className="text-sm text-gray-800 dark:text-white/90">Preview</div>
                 </div>
               )}
 

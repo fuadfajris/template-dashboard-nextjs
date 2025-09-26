@@ -151,7 +151,7 @@ export default function AddGuestModal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-md p-6 bg-white dark:bg-gray-900 rounded-2xl shadow-lg">
+              <Dialog.Panel className="w-full max-w-4xl p-6 rounded-lg bg-primary/5 bg-white dark:bg-gray-800">
                 <Dialog.Title className="text-lg font-medium text-gray-800 dark:text-white">
                   Add Lineup to Schedule
                 </Dialog.Title>
@@ -164,11 +164,20 @@ export default function AddGuestModal({
                   <select
                     value={selectedGuest}
                     onChange={(e) => setSelectedGuest(e.target.value)}
-                    className="w-full border rounded-lg p-2 bg-white text-gray-800  dark:border-gray-700"
+                    className="w-full border rounded-lg p-2 bg-input"
                   >
-                    <option value="">-- Select --</option>
+                    <option
+                      value=""
+                      className="text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                    >
+                      -- Select --
+                    </option>
                     {guests.map((g) => (
-                      <option key={g.id} value={g.id}>
+                      <option
+                        key={g.id}
+                        value={g.id}
+                        className="text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                      >
                         {g.name}
                       </option>
                     ))}

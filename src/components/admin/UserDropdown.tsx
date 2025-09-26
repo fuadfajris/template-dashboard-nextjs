@@ -39,7 +39,7 @@ export default function UserDropdown() {
               src={
                 user.logo
                   ? `/api/upload?file=${user.logo}`
-                  : "/api/upload?file=/uploads/merchant/placeholder.png"
+                  : "/api/upload?file=/uploads/merchant/placeholder.jpg"
               }
               alt={user.name}
             />

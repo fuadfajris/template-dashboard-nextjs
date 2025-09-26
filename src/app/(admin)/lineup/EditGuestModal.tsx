@@ -113,7 +113,7 @@ export default function EditGuestModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 dark:bg-white/25">
-      <div className="bg-white dark:bg-gray-900 rounded-lg p-6 w-full max-w-md">
+      <div className="w-full max-w-4xl p-6 rounded-lg bg-primary/5 bg-white dark:bg-gray-800">
         <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Edit Lineup Schedule</h2>
 
         {/* Lineup info (non-editable) */}

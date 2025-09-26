@@ -620,7 +620,7 @@ export default function EventDetailPage() {
         </Card>
       )}
 
-      <div className="p-6 rounded-lg mt-5 grid gap-4 border border-primary/20 bg-primary/5 bg-white dark:bg-white/[0.03]">
+      <div className="p-6 rounded-lg mt-5 grid gap-4 border border-primary/20 dark:border-gray-800 bg-primary/5 bg-white dark:bg-white/[0.03]">
         <h2 className="text-lg font-bold mb-4 col-span-12 text-gray-800 dark:text-white/90">
           Edit Event
         </h2>
@@ -629,7 +629,7 @@ export default function EventDetailPage() {
         <input
           type="text"
           placeholder="Event Name"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
+          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
           value={editEvent?.name || ""}
           onChange={(e) =>
             setEditEvent((prev) =>
@@ -641,7 +641,7 @@ export default function EventDetailPage() {
         <input
           type="text"
           placeholder="Location"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
+          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
           value={editEvent?.location || ""}
           onChange={(e) =>
             setEditEvent((prev) =>
@@ -653,7 +653,7 @@ export default function EventDetailPage() {
         {/* Description */}
         <textarea
           placeholder="Description"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 h-32 resize-y"
+          className="w-full border rounded-lg p-2 mb-2 col-span-12 h-32 resize-y bg-input"
           value={editEvent?.description || ""}
           onChange={(e) =>
             setEditEvent((prev) =>
@@ -665,7 +665,7 @@ export default function EventDetailPage() {
         {/* Start Date & End Date */}
         <input
           type="date"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
+          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
           value={editEvent?.start_date?.split("T")[0] || ""}
           min={
             editEvent?.start_date?.split("T")[0] ||
@@ -681,7 +681,7 @@ export default function EventDetailPage() {
 
         <input
           type="date"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
+          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
           value={editEvent?.end_date?.split("T")[0] || ""}
           min={
             editEvent?.end_date?.split("T")[0] ||
@@ -701,7 +701,7 @@ export default function EventDetailPage() {
               type="file"
               ref={venueInputRef}
               accept="image/*"
-              className="w-full border rounded-lg p-2 mb-2"
+              className="w-full border rounded-lg p-2 mb-2 bg-input"
               onChange={(e) => {
                 const f = e.target.files?.[0] || null;
                 if (f) {
@@ -726,11 +726,11 @@ export default function EventDetailPage() {
                 alt="Event Preview"
                 width={100}
                 height={100}
-                className="w-auto h-40 object-cover rounded-lg border"
+                className="w-auto h-40 object-cover rounded-lg border bg-input"
               />
             ) : (
-              <div className="w-full h-40 flex items-center justify-center border rounded-lg text-gray-400">
-                No Image
+              <div className="w-full h-40 flex items-center justify-center border rounded-lg bg-input">
+                No Venue Image
               </div>
             )}
           </div>
@@ -743,7 +743,7 @@ export default function EventDetailPage() {
               ref={heroInputRef}
               type="file"
               accept="image/*"
-              className="w-full border rounded-lg p-2 mb-2"
+              className="w-full border rounded-lg p-2 mb-2 bg-input"
               onChange={(e) => {
                 const f = e.target.files?.[0] || null;
                 if (f) {
@@ -768,10 +768,10 @@ export default function EventDetailPage() {
                 alt="Hero Preview"
                 width={100}
                 height={100}
-                className="w-auto h-40 object-cover rounded-lg border"
+                className="w-auto h-40 object-cover rounded-lg border bg-input"
               />
             ) : (
-              <div className="w-full h-40 flex items-center justify-center border rounded-lg text-gray-400">
+              <div className="w-full h-40 flex items-center justify-center border rounded-lg bg-input">
                 No Hero Image
               </div>
             )}
@@ -782,7 +782,7 @@ export default function EventDetailPage() {
         <input
           type="number"
           placeholder="Capacity"
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
+          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
           value={editEvent?.capacity || 0}
           onChange={(e) =>
             setEditEvent((prev) =>
@@ -797,7 +797,7 @@ export default function EventDetailPage() {
         />
 
         <select
-          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6"
+          className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
           value={editEvent?.status ? "true" : "false"}
           onChange={(e) =>
             setEditEvent((prev) =>
@@ -805,8 +805,8 @@ export default function EventDetailPage() {
             )
           }
         >
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
+          <option value="true" className="!text-gray-800">Active</option>
+          <option value="false" className="!text-gray-800">Inactive</option>
         </select>
 
         {/* Action Buttons */}

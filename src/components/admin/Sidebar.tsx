@@ -307,7 +307,7 @@ const Sidebar: React.FC = () => {
                     src={
                       user.logo
                         ? `/api/upload?file=${user.logo}`
-                        : "/api/upload?file=/uploads/merchant/placeholder.png"
+                        : "/api/upload?file=/uploads/merchant/placeholder.jpg"
                     }
                     alt="Logo"
                     width={50}
@@ -328,7 +328,7 @@ const Sidebar: React.FC = () => {
                     src={
                       user.logo
                         ? `/api/upload?file=${user.logo}`
-                        : "/api/upload?file=/uploads/merchant/placeholder.png"
+                        : "/api/upload?file=/uploads/merchant/placeholder.jpg"
                     }
                     alt="Logo"
                     width={32}

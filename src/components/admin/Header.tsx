@@ -93,7 +93,7 @@ const Header: React.FC = () => {
               src={
                 user?.logo
                   ? `/api/upload?file=${user.logo}`
-                  : "/api/upload?file=/uploads/merchant/placeholder.png"
+                  : "/api/upload?file=/uploads/merchant/placeholder.jpg"
               }
               alt="Logo"
             />
@@ -104,7 +104,7 @@ const Header: React.FC = () => {
               src={
                 user?.logo
                   ? `/api/upload?file=${user.logo}`
-                  : "/api/upload?file=/uploads/merchant/placeholder.png"
+                  : "/api/upload?file=/uploads/merchant/placeholder.jpg"
               }
               alt="Logo"
             />
