@@ -2,17 +2,31 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
+import { useUser } from "@/context/UserContext";
 
-type Guest = {
-  id: string;
+// GuestInfo sesuai Page
+type GuestInfo = {
+  id: number;
   name: string;
   email: string;
   phone: string;
-  stage: string;
+  role?: string;
+  invitation_status?: string;
+  category?: string;
+  image?: string;
+  event_id: number;
+};
+
+// GuestItem sesuai Page
+type GuestItem = {
+  id: string;
+  guest_id: string;
+  event_id: string;
+  schedule_date: string;
   start_time: string;
   end_time: string;
-  schedule_date: string;
-  schedule_id?: string;
+  stage: string;
+  guest: GuestInfo;
 };
 
 export default function EditGuestModal({
@@ -23,12 +37,13 @@ export default function EditGuestModal({
   onUpdated,
 }: {
   eventId: string | null;
-  guest: Guest | null;
+  guest: GuestItem | null;
   open: boolean;
   onClose: () => void;
   onUpdated: () => void;
 }) {
-  const [form, setForm] = useState<Guest | null>(guest);
+  const { user } = useUser();
+  const [form, setForm] = useState<GuestItem | null>(guest);
   const [eventRange, setEventRange] = useState<{
     start: string;
     end: string;
@@ -42,18 +57,20 @@ export default function EditGuestModal({
     const fetchEventRange = async () => {
       if (!eventId) return;
 
-      const { data, error } = await supabase
-        .from("events")
-        .select("start_date, end_date")
-        .eq("id", eventId)
-        .single();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user?.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
 
-      if (error) {
-        console.error("Failed to fetch event range:", error.message);
-        return;
-      }
+      if (res.ok) {
+        const result = await res.json();
+        const data = result;
 
-      if (data) {
         setEventRange({
           start: data.start_date,
           end: data.end_date,
@@ -64,25 +81,38 @@ export default function EditGuestModal({
     fetchEventRange();
   }, [eventId, guest, open]);
 
-  const handleChange = (field: keyof Guest, value: string) => {
+  const handleChange = (field: keyof GuestItem, value: string) => {
     setForm((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
   const handleSubmit = async () => {
-    if (!form?.schedule_id) return;
+    if (!form?.id) return;
 
-    const { error } = await supabase
-      .from("guest_schedules")
-      .update({
-        schedule_date: form.schedule_date,
-        start_time: form.start_time,
-        end_time: form.end_time,
-        stage: form.stage,
-      })
-      .eq("id", form.schedule_id);
+    const req = {
+      schedule_date: form.schedule_date,
+      start_time: form.start_time,
+      end_time: form.end_time,
+      stage: form.stage,
+    };
 
-    if (error) {
-      console.error("Failed to update lineup schedule:", error.message);
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/guests/lineup/${form.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+        body: JSON.stringify(req),
+      }
+    );
+
+    if (!res.ok) {
+      console.error(
+        "Failed to update lineup schedule:",
+        res.status,
+        res.statusText
+      );
       return;
     }
 
@@ -114,7 +144,9 @@ export default function EditGuestModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 dark:bg-white/25">
       <div className="w-full max-w-4xl p-6 rounded-lg bg-primary/5 bg-white dark:bg-gray-800">
-        <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">Edit Lineup Schedule</h2>
+        <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-white">
+          Edit Lineup Schedule
+        </h2>
 
         {/* Lineup info (non-editable) */}
         <div className="mb-4">
@@ -123,7 +155,7 @@ export default function EditGuestModal({
           </label>
           <input
             type="text"
-            value={`${form.name}`}
+            value={form.guest.name}
             disabled
             className="w-full border p-2 text-gray-800 dark:text-white rounded-lg"
           />

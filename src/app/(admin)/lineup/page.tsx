@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useUser } from "@/context/UserContext";
 import Select from "@/components/form/Select";
 import Label from "@/components/form/Label";
@@ -11,25 +10,42 @@ import BasicTableOne from "@/components/table/BasicTableOne";
 import AddGuestModal from "./AddGuestModal";
 import EditGuestModal from "./EditGuestModal";
 
+// Option untuk Select
 type Option = {
   value: string;
   label: string;
 };
 
-type Guest = {
+// Struktur Guest dari API
+type GuestInfo = {
+  id: number;
   name: string;
   email: string;
   phone: string;
-  stage: string;
+  role?: string;
+  invitation_status?: string;
+  category?: string;
+  image?: string;
+  event_id: number;
+};
+
+// Item jadwal guest
+type GuestItem = {
+  id: string;
+  guest_id: string;
+  event_id: string;
   schedule_date: string;
   start_time: string;
   end_time: string;
+  stage: string;
+  guest: GuestInfo;
   schedule_id: string;
 };
 
+// Struktur data per tanggal
 type DaySchedule = {
   date: string;
-  guests: Guest[];
+  guests: GuestItem[];
 };
 
 export default function GuestPage() {
@@ -39,123 +55,119 @@ export default function GuestPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [eventId, setEventId] = useState<string>("");
   const [editOpen, setEditOpen] = useState(false);
-  const [selectedGuest, setSelectedGuest] = useState<any>(null);
+  const [selectedGuest, setSelectedGuest] = useState<GuestItem | null>(null);
 
+  // Set judul halaman
   useEffect(() => {
     document.title = "Lineup - MyApp";
   }, []);
 
+  // Fetch event untuk merchant
   useEffect(() => {
     const fetchEvents = async () => {
       if (!user?.id) return;
 
-      const { data, error } = await supabase
-        .from("events")
-        .select("id, name")
-        .eq("status", true)
-        .eq("merchant_id", user.id)
-        .order("id", { ascending: true });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
 
-      if (error) {
-        console.error("Failed to fetch events:", error.message);
+      if (!res.ok) {
+        console.error("Failed to fetch events:", res.status, res.statusText);
         return;
       }
 
-      if (data) {
-        const formattedEvents = data.map((event) => ({
-          value: event.id,
-          label: event.name,
-        }));
-        setEvents(formattedEvents);
-        setEventId(data.length !== 0 ? data[0].id : "");
-      }
+      const result = await res.json();
+      const data: { id: string; name: string }[] = result;
+
+      const formattedEvents = data.map((event) => ({
+        value: event.id,
+        label: event.name,
+      }));
+
+      setEvents(formattedEvents);
+      setEventId(data.length !== 0 ? data[0].id : "");
     };
 
     fetchEvents();
   }, [user]);
 
+  // Fetch data guest per event
   useEffect(() => {
     eventId && handleSelectChange(eventId);
   }, [eventId]);
 
   const handleSelectChange = async (eventId: string) => {
     setEventId(eventId);
-    const { data, error } = await supabase
-      .from("guest_schedules")
-      .select(
-        `
-        id,
-        schedule_date,
-        start_time,
-        end_time,
-        stage,
-        guests (
-          name,
-          email,
-          phone
-        )
-      `
-      )
-      .eq("event_id", eventId);
 
-    if (error) {
-      console.error("Failed to fetch event activities:", error.message);
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/guests/lineup/${eventId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+      }
+    );
+
+    if (!res.ok) {
+      console.error(
+        "Failed to fetch event activities:",
+        res.status,
+        res.statusText
+      );
       return;
     }
 
-    const daysMap: Record<string, Guest[]> = {};
+    const result = await res.json();
+    const data: GuestItem[] = result;
+
+    // Group by schedule_date
+    const daysMap: Record<string, GuestItem[]> = {};
     data.forEach((item) => {
-      const guestList = Array.isArray(item.guests)
-        ? item.guests
-        : [item.guests];
-
-      guestList.forEach((guest) => {
-        if (!daysMap[item.schedule_date]) {
-          daysMap[item.schedule_date] = [];
-        }
-
-        daysMap[item.schedule_date].push({
-          name: guest.name ?? "-",
-          email: guest.email ?? "-",
-          phone: guest.phone ?? "-",
-          stage: item.stage ?? "-",
-          schedule_date: item.schedule_date ?? "-",
-          start_time: item.start_time ?? "-",
-          end_time: item.end_time ?? "-",
-          schedule_id: item.id,
-        });
-      });
+      if (!daysMap[item.schedule_date]) daysMap[item.schedule_date] = [];
+      daysMap[item.schedule_date].push(item);
     });
 
     const daysArray: DaySchedule[] = Object.entries(daysMap)
-      .map(([date, guests]) => ({
-        date,
-        guests,
-      }))
+      .map(([date, guests]) => ({ date, guests }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     setEventDays(daysArray);
   };
 
-  const handleEditClick = (guest: any) => {
+  const handleEditClick = (guest: GuestItem) => {
+    console.log(guest)
     setSelectedGuest(guest);
     setEditOpen(true);
   };
 
-  const handleDelete = async (guest: Guest) => {
-    if (!confirm(`Are you sure you want to delete ${guest.name}?`)) return;
+  const handleDelete = async (guest: GuestItem) => {
+    console.log(guest)
+    if (!confirm(`Are you sure you want to delete ${guest.guest.name}?`)) return;
 
-    const { error } = await supabase
-      .from("guest_schedules")
-      .delete()
-      .eq("id", guest.schedule_id);
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/guests/lineup/${guest.id}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+      }
+    );
 
-    if (error) {
-      console.error("Failed to delete schedule:", error.message);
+    if (!res.ok) {
+      console.error("Failed to delete guest schedule");
       return;
     }
 
-    // refresh data
+    // Refresh data
     handleSelectChange(eventId);
   };
 
@@ -205,14 +217,13 @@ export default function GuestPage() {
                 { key: "actions", label: "Actions" },
               ]}
               rows={(eventDays[activeTab]?.guests || []).map((g) => ({
-                name: g.name,
-                phone: g.phone,
-                stage: g.stage,
-                start: g.start_time,
-                end: g.end_time,
+                name: g.guest.name ?? "-",
+                phone: g.guest.phone ?? "-",
+                stage: g.stage ?? "-",
+                start: g.start_time ?? "-",
+                end: g.end_time ?? "-",
                 actions: (
                   <div className="flex gap-2">
-                    {/* Edit button */}
                     <button
                       onClick={() => handleEditClick(g)}
                       className="px-2 py-1 text-sm text-white bg-blue-500 rounded hover:bg-blue-600"
@@ -220,7 +231,6 @@ export default function GuestPage() {
                       Edit
                     </button>
 
-                    {/* Delete button */}
                     <button
                       onClick={() => handleDelete(g)}
                       className="px-2 py-1 text-sm text-white bg-red-500 rounded hover:bg-red-600"
@@ -237,7 +247,7 @@ export default function GuestPage() {
               guest={selectedGuest}
               open={editOpen}
               onClose={() => setEditOpen(false)}
-              onUpdated={() => handleSelectChange(eventId)} // refresh tabel
+              onUpdated={() => handleSelectChange(eventId)}
             />
           </div>
         </>

@@ -2,7 +2,7 @@
 
 import { Dialog, Transition } from "@headlessui/react";
 import { Fragment, useState, useEffect } from "react";
-import { supabase } from "@/lib/supabase";
+import { useUser } from "@/context/UserContext";
 
 type Guest = {
   id: string;
@@ -18,6 +18,7 @@ export default function AddGuestModal({
   eventId: string;
   onAdded: () => void;
 }) {
+  const { user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [guests, setGuests] = useState<Guest[]>([]);
   const [selectedGuest, setSelectedGuest] = useState("");
@@ -34,10 +35,20 @@ export default function AddGuestModal({
   useEffect(() => {
     if (!isOpen) return;
     const fetchGuests = async () => {
-      const { data, error } = await supabase
-        .from("guests")
-        .select("id, name, email, phone");
-      if (!error && data) setGuests(data);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/guests/lineup`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
+
+      const result = await res.json();
+      const data = result;
+
+      if (res.ok && data) setGuests(data);
     };
     fetchGuests();
   }, [isOpen]);
@@ -45,13 +56,20 @@ export default function AddGuestModal({
   useEffect(() => {
     if (!isOpen) return;
     const fetchEvent = async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("start_date, end_date")
-        .eq("id", eventId)
-        .single();
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user?.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
 
-      if (!error && data) {
+      if (res.ok) {
+        const result = await res.json();
+        const data = result;
+
         setEventRange({
           start: data.start_date,
           end: data.end_date,
@@ -65,19 +83,29 @@ export default function AddGuestModal({
   const handleSubmit = async () => {
     if (!selectedGuest || !date || !start || !end) return;
 
-    const { error } = await supabase.from("guest_schedules").insert([
-      {
-        event_id: eventId,
-        guest_id: selectedGuest,
-        schedule_date: date,
-        start_time: start,
-        end_time: end,
-        stage,
-      },
-    ]);
+    const req = {
+      event_id: eventId,
+      guest_id: Number(selectedGuest),
+      schedule_date: date,
+      start_time: start,
+      end_time: end,
+      stage,
+    };
 
-    if (error) {
-      console.error("Failed to add lineup:", error.message);
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/guests/lineup`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+        body: JSON.stringify(req),
+      }
+    );
+
+    if (!res.ok) {
+      console.error("Failed to add lineup:", res.status, res.statusText);
       return;
     }
 
