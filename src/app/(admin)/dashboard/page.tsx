@@ -302,46 +302,45 @@ export default function DashboardPage() {
     if (!user?.id || !eventId) return;
 
     const countCheckin = async () => {
-      const { data, error } = await supabase
-        .from("checkins")
-        .select(
-          `
-          checked_in_at,
-          ticket_details:ticket_details!inner(
-            gender,
-            orders:orders!inner(
-              event_id
-            )
-          )
-        `
-        )
-        .not("checked_in_at", "is", null)
-        .eq("ticket_details.orders.event_id", eventId);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/checkins?event_id=${eventId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
 
-      if (!error && data) {
-        let maleCount = 0;
-        let femaleCount = 0;
-
-        data.forEach((item) => {
-          const td = Array.isArray(item.ticket_details)
-            ? item.ticket_details[0]
-            : item.ticket_details;
-
-          const gender = td?.gender;
-          if (gender?.toLowerCase() === "male") maleCount++;
-          else if (gender?.toLowerCase() === "female") femaleCount++;
-        });
-
-        const notCheckin =
-          ticketsDashboard.totalTickets - (maleCount + femaleCount);
-
-        setCheckinSeries([maleCount, femaleCount, notCheckin]);
-        setCountCheckin(maleCount + femaleCount);
+      if (!res.ok) {
+        console.error("Failed to fetch order:", res.status, res.statusText);
+        return;
       }
+
+      const data = await res.json();
+
+      let maleCount = 0;
+      let femaleCount = 0;
+
+      data.forEach((item: any) => {
+        const td = Array.isArray(item.ticket_details)
+          ? item.ticket_details[0]
+          : item.ticket_details;
+
+        const gender = td?.gender;
+        if (gender?.toLowerCase() === "male") maleCount++;
+        else if (gender?.toLowerCase() === "female") femaleCount++;
+      });
+
+      const notCheckin =
+        ticketsDashboard.totalTickets - (maleCount + femaleCount);
+
+      setCheckinSeries([maleCount, femaleCount, notCheckin]);
+      setCountCheckin(maleCount + femaleCount);
     };
 
     countCheckin();
-  }, [ticketsDashboard.totalTickets, eventId, user?.id]);
+  }, [ticketsDashboard.totalTickets]);
 
   const options: ApexOptions = {
     labels: ["Male", "Female", "Not Checkin"],
