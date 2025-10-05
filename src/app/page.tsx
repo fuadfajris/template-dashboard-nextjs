@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/context/UserContext";
-import { supabase } from "@/lib/supabase";
 import {
   AlertCircle,
   BarChart3,
@@ -20,55 +19,53 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useUser();
   const [isLoading, setIsLoading] = useState(false);
-  const [emailError, setEmailError] = useState("")
-  const [passwordError, setPasswordError] = useState("")
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const handleLogin = async () => {
-    setEmailError("")
-    setPasswordError("")
+    setEmailError("");
+    setPasswordError("");
     setIsLoading(true);
 
-    const { data, error } = await supabase
-      .from("merchants")
-      .select("*")
-      .eq("email", email)
-      .eq("password", password)
-      .single();
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/merchants/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
-    // if (error || !data) {
-    //   setIsLoading(false);
-    //   alert("Login gagal: email atau password salah");
-    //   return;
-    // }
-
-    if (error || !data) {
-      if (!email) {
-        setEmailError("Email tidak boleh kosong")
-      } else if (!email.includes("@")) {
-        setEmailError("Format email tidak valid")
-      } else {
-        setEmailError("Email atau password salah")
+      if (!res.ok) {
+        setIsLoading(false);
+        setEmailError("Email atau password salah");
+        setPasswordError("Email atau password salah");
+        return;
       }
 
-      if (!password) {
-        setPasswordError("Password tidak boleh kosong")
-      } else {
-        setPasswordError("Email atau password salah")
-      }
+      const result = await res.json();
+      const token = result.access_token;
 
-      setIsLoading(false)
-      return
+      login({
+        id: result.user.id,
+        name: result.user.name,
+        email: result.user.email,
+        logo: result.user.logo ?? null,
+        logo_path: result.user.logo_path ?? null,
+        token,
+      });
+
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("Login error:", err);
+      setEmailError("Terjadi kesalahan server");
+      setPasswordError("Coba lagi nanti");
+    } finally {
+      setIsLoading(false);
     }
-
-
-    login({
-      id: data.id,
-      name: data.name,
-      logo: data.logo ?? "/default-logo.png",
-      email: data.email,
-    });
-
-    router.push("/dashboard");
   };
 
   return (

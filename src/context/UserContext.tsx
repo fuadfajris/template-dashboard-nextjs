@@ -9,6 +9,7 @@ type User = {
   email: string;
   logo?: string | null;
   logo_path?: string | null;
+  token?: string;
 };
 
 type UserContextType = {
@@ -27,26 +28,26 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const saved = localStorage.getItem("user");
+    const saved = sessionStorage.getItem("user");
     if (saved) {
       try {
         setUser(JSON.parse(saved));
       } catch (e) {
-        console.error("Failed to parse user from localStorage", e);
+        console.error("Failed to parse user from sessionStorage", e);
       }
     }
     setIsLoading(false);
   }, []);
 
   const login = (userData: User) => {
-    localStorage.setItem("user", JSON.stringify(userData));
+    sessionStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem("user");
+    sessionStorage.removeItem("user");
     setUser(null);
-    router.push("/"); 
+    router.push("/");
   };
 
   return (
