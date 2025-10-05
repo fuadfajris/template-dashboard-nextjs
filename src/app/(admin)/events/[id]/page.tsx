@@ -81,12 +81,12 @@ export default function EventDetailPage() {
 
   // fetch data event & template
   useEffect(() => {
-    if (!didFetch.current && id) {
+    if (!didFetch.current && id && user?.id) {
       fetchEvent(id as string);
       fetchTemplates();
       didFetch.current = true;
     }
-  }, [id]);
+  }, [id, user?.id]);
 
   useEffect(() => {
     if (!editEvent || !event) return;
@@ -132,46 +132,53 @@ export default function EventDetailPage() {
   }, [templates]);
 
   const fetchEvent = async (eventId: string) => {
-    const { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .eq("id", eventId)
-      .single();
+    if (!user) return;
 
-    if (error) {
-      console.error("Failed to fetch event:", error.message);
-      return;
-    }
-    setEvent(data);
-    setEditEvent(data);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
 
-    if (data.template_id) {
-      setActiveTemplate(data.template_id);
+      if (!res.ok) {
+        console.error("Failed to fetch event:", res.status, res.statusText);
+        return;
+      }
+
+      const result = await res.json();
+
+      const eventData = result.data ?? result;
+
+      setEvent(eventData);
+      setEditEvent(eventData);
+
+      if (eventData.template_id) {
+        setActiveTemplate(eventData.template_id);
+      }
+    } catch (error) {
+      console.error("Error fetching event:", error);
     }
   };
 
   const fetchTemplates = async () => {
-    const { data, error } = await supabase
-      .from("templates")
-      .select(
-        `
-        id,
-        title,
-        category,
-        thumbnail,
-        description,
-        url,
-        features:features(
-          feature_name
-        )
-      `
-      )
-      .order("id", { ascending: true });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/templates`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user?.token}`,
+      },
+    });
 
-    if (error) {
-      console.error("Failed to fetch templates:", error.message);
+    if (!res.ok) {
+      console.error("Failed to fetch templates:", res.status, res.statusText);
       return;
     }
+    const result = await res.json();
+    const data = result.data;
 
     const mapped: Template[] = (data as RawTemplate[]).map((t) => ({
       id: t.id,
@@ -233,16 +240,36 @@ export default function EventDetailPage() {
         }
       }
 
-      const { error } = await supabase
-        .from("events")
-        .update({
-          template_id: selectedTemplate,
-          image_venue: null,
-          hero_image: null,
-        })
-        .eq("id", event.id);
+      const req = {
+        name: event.name,
+        description: event.description,
+        location: event.location,
+        start_date: event.start_date,
+        end_date: event.end_date,
+        capacity: event.capacity,
+        status: event.status,
+        image_venue: null,
+        hero_image: null,
+        template_id: selectedTemplate,
+      };
 
-      if (error) throw new Error(error.message);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events/${event.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+          body: JSON.stringify(req),
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Failed to update event:", res.status, res.statusText);
+        setIsChanged(true);
+        return;
+      }
 
       setActiveTemplate(selectedTemplate);
       setEvent({
@@ -379,23 +406,32 @@ export default function EventDetailPage() {
       return;
     }
 
-    const { error } = await supabase
-      .from("events")
-      .update({
-        name: editEvent.name,
-        description: editEvent.description,
-        location: editEvent.location,
-        start_date: editEvent.start_date,
-        end_date: editEvent.end_date,
-        capacity: editEvent.capacity,
-        status: editEvent.status,
-        image_venue: imageUrl,
-        hero_image: heroImageUrl,
-      })
-      .eq("id", editEvent.id);
+    const req = {
+      name: editEvent.name,
+      description: editEvent.description,
+      location: editEvent.location,
+      start_date: editEvent.start_date,
+      end_date: editEvent.end_date,
+      capacity: editEvent.capacity,
+      status: editEvent.status,
+      image_venue: imageUrl,
+      hero_image: heroImageUrl,
+    };
 
-    if (error) {
-      console.error("Failed to update event:", error.message);
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/events/${editEvent.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+        body: JSON.stringify(req),
+      }
+    );
+
+    if (!res.ok) {
+      console.error("Failed to update event:", res.status, res.statusText);
       setIsChanged(true);
       return;
     }
@@ -805,8 +841,12 @@ export default function EventDetailPage() {
             )
           }
         >
-          <option value="true" className="!text-gray-800">Active</option>
-          <option value="false" className="!text-gray-800">Inactive</option>
+          <option value="true" className="!text-gray-800">
+            Active
+          </option>
+          <option value="false" className="!text-gray-800">
+            Inactive
+          </option>
         </select>
 
         {/* Action Buttons */}

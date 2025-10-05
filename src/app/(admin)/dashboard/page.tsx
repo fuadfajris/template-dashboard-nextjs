@@ -97,16 +97,30 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user?.id) return;
     const fetchEvents = async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("id, name")
-        .eq("merchant_id", user.id)
-        .order("id", { ascending: true });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (!error && data) {
-        setEventList(data.map((e) => ({ value: e.id, label: e.name })));
-        setEventId(data.length !== 0 ? data[0].id : "");
+      if (!res.ok) {
+        console.error("Failed to fetch events:", res.status, res.statusText);
+        return;
       }
+
+      const result = await res.json();
+      const data: { id: string; name: string }[] = result;
+
+      const formattedEvents = data.map((event) => ({
+        value: event.id,
+        label: event.name,
+      }));
+
+      setEventList(formattedEvents);
+      setEventId(data.length !== 0 ? data[0].id : "");
     };
     fetchEvents();
   }, [user]);
@@ -115,125 +129,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user?.id || !eventId) return;
 
-    const fetchOrder = async () => {
-      const { data, count, error } = await supabase
-        .from("orders")
-        .select(
-          `
-            *,
-            user:users (
-              name,
-              email,
-              phone
-            ),
-            event:events (
-              start_date
-            )
-          `,
-          { count: "exact" }
-        )
-        .eq("status", "paid")
-        .eq("event_id", eventId)
-        .order("order_date", { ascending: true });
-
-      if (!error && data) {
-        const eventDate = data.length
-          ? new Date(data[0].event.start_date)
-          : new Date();
-        const eventMonth = eventDate.getMonth();
-        const eventYear = eventDate.getFullYear();
-
-        const monthNames = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
-
-        const cat: string[] = [];
-        for (let i = 2; i >= 0; i--) {
-          const d = new Date(eventYear, eventMonth - i, 1);
-          cat.push(monthNames[d.getMonth()]);
-        }
-        setCategories(cat);
-
-        const monthCounts = Array(3).fill(0);
-        data.forEach((item: Order) => {
-          const date = new Date(item.order_date);
-          const m = date.getMonth();
-          const y = date.getFullYear();
-
-          cat.forEach((c, idx) => {
-            if (y === eventYear && monthNames[m] === c) {
-              monthCounts[idx]++;
-            }
-          });
-        });
-
-        setSalesChart(monthCounts);
-        setOrdersDashboard({
-          totalOrders: count ?? 0,
-          recentOrders: data as Order[],
-        });
-      }
-    };
-
-    const fetchTicket = async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          `
-            quantity,
-            status,
-            event_id,
-            ticket: tickets ( ticket_type )
-          `
-        )
-        .eq("status", "paid")
-        .eq("event_id", eventId)
-        .returns<TicketItem[]>();
-
-      if (!error && data) {
-        const ticketsPerCategory: Record<string, number> = {};
-        let totalTickets = 0;
-
-        (data as TicketItem[]).forEach((item) => {
-          const type = item.ticket.ticket_type;
-          const qty = item.quantity;
-
-          totalTickets += qty;
-          ticketsPerCategory[type] = (ticketsPerCategory[type] || 0) + qty;
-        });
-        const labels = Object.keys(ticketsPerCategory);
-        const series = Object.values(ticketsPerCategory);
-
-        setTicketsDashboard({
-          totalTickets,
-          ticketsPerCategory,
-          labels,
-          series: labels.map(() => 0),
-        });
-
-        setTimeout(() => {
-          setTicketsDashboard({
-            totalTickets,
-            ticketsPerCategory,
-            labels,
-            series,
-          });
-        }, 300);
-      }
-    };
-
-    // utils buat generate range tanggal
     function getDateRange(start: string, end: string) {
       const startDate = new Date(start);
       const endDate = new Date(end);
@@ -252,36 +147,122 @@ export default function DashboardPage() {
       return dates;
     }
 
-    const fetchGenderComparison = async () => {
-      // 1. Ambil info event untuk tahu start & end date
-      const { data: event, error: eventErr } = await supabase
-        .from("events")
-        .select("start_date, end_date")
-        .eq("id", eventId)
-        .single();
+    const fetchOrder = async () => {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/order-transactions?event_id=${eventId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
 
-      if (eventErr || !event) return;
+      if (!res.ok) {
+        console.error("Failed to fetch order:", res.status, res.statusText);
+        return;
+      }
 
-      // 2. Generate semua tanggal event
-      const categories = getDateRange(event.start_date, event.end_date);
+      const data = await res.json();
+      const count = data.length;
 
-      // 3. Ambil ticket_details via orders -> order_items
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          `
-      id,
-      event_id,
-      ticket_details (
-        id,
-        event_date,
-        gender
-      )
-    `
-        )
-        .eq("event_id", eventId);
+      // SALES AND ORDER
 
-      if (error || !data) return;
+      const eventDate = data.length
+        ? new Date(data[0].event.start_date)
+        : new Date();
+      const eventMonth = eventDate.getMonth();
+      const eventYear = eventDate.getFullYear();
+
+      const monthNames = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      const cat: string[] = [];
+      for (let i = 2; i >= 0; i--) {
+        const d = new Date(eventYear, eventMonth - i, 1);
+        cat.push(monthNames[d.getMonth()]);
+      }
+      setCategories(cat);
+
+      const monthCounts = Array(3).fill(0);
+      data.forEach((item: Order) => {
+        const date = new Date(item.order_date);
+        const m = date.getMonth();
+        const y = date.getFullYear();
+
+        cat.forEach((c, idx) => {
+          if (y === eventYear && monthNames[m] === c) {
+            monthCounts[idx]++;
+          }
+        });
+      });
+
+      setSalesChart(monthCounts);
+      setOrdersDashboard({
+        totalOrders: count ?? 0,
+        recentOrders: data as Order[],
+      });
+
+      // TICKET TYPE
+
+      const ticketsPerCategory: Record<string, number> = {};
+      let totalTickets = 0;
+
+      (data as TicketItem[]).forEach((item) => {
+        const type = item.ticket.ticket_type;
+        const qty = item.quantity;
+
+        totalTickets += qty;
+        ticketsPerCategory[type] = (ticketsPerCategory[type] || 0) + qty;
+      });
+      const labels = Object.keys(ticketsPerCategory);
+      const series = Object.values(ticketsPerCategory);
+
+      setTicketsDashboard({
+        totalTickets,
+        ticketsPerCategory,
+        labels,
+        series: labels.map(() => 0),
+      });
+
+      setTimeout(() => {
+        setTicketsDashboard({
+          totalTickets,
+          ticketsPerCategory,
+          labels,
+          series,
+        });
+      }, 300);
+
+      // GENDER COMPARISON
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to fetch events:", response.status, response.statusText);
+        return;
+      }
+      const result = await response.json();
+      const categories = getDateRange(result.start_date, result.end_date);
 
       // 4. Buat grouped default = 0
       const grouped: Record<string, { male: number; female: number }> = {};
@@ -290,8 +271,8 @@ export default function DashboardPage() {
       });
 
       // 5. Isi dari ticket_details
-      data.forEach((order) => {
-        order.ticket_details?.forEach((td) => {
+      data.forEach((order: any) => {
+        order.ticket_details?.forEach((td: any) => {
           const date = new Date(td.event_date).toLocaleDateString("id-ID", {
             day: "numeric",
             month: "short",
@@ -314,8 +295,6 @@ export default function DashboardPage() {
     };
 
     fetchOrder();
-    fetchTicket();
-    fetchGenderComparison();
   }, [user, eventId]);
 
   // count checkin (jalan setelah totalTickets keisi)

@@ -28,6 +28,30 @@ type EventRow = {
   action: React.ReactNode;
 };
 
+type Template = {
+  id: number;
+  title: string;
+  category: string;
+  thumbnail: string | null;
+  description: string | null;
+  url: string | null;
+  features: string[];
+};
+
+type RawTemplate = {
+  id: number;
+  title: string;
+  category: string;
+  thumbnail: string | null;
+  description: string | null;
+  url: string | null;
+  features?: Feature[];
+};
+
+type Feature = {
+  feature_name: string;
+};
+
 export default function EventPage() {
   const { user } = useUser();
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -46,6 +70,7 @@ export default function EventPage() {
   });
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<Template[]>([]);
 
   useEffect(() => {
     document.title = "Event - MyApp";
@@ -53,6 +78,7 @@ export default function EventPage() {
 
   useEffect(() => {
     fetchEvents();
+    fetchTemplates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -66,34 +92,71 @@ export default function EventPage() {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
-  const fetchEvents = async (search?: string) => {
-    if (!user?.id) return;
-    setLoading(true);
+  const fetchTemplates = async () => {
+    if (!user?.id || !user.token) return;
 
-    let query = supabase
-      .from("events")
-      .select(
-        "id, image_venue, name, description, location, start_date, end_date, capacity, status"
-      )
-      .eq("merchant_id", user.id)
-      .order("id", { ascending: true });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/templates`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user?.token}`,
+      },
+    });
 
-    if (search && search.trim() !== "") {
-      query = query.or(
-        `name.ilike.%${search}%,description.ilike.%${search}%,location.ilike.%${search}%`
-      );
-    }
-
-    const { data, error } = await query;
-
-    setLoading(false);
-
-    if (error) {
-      console.error("Failed to fetch events:", error.message);
+    if (!res.ok) {
+      console.error("Failed to fetch templates:", res.status, res.statusText);
       return;
     }
+    const result = await res.json();
+    const data = result.data;
 
-    if (data) setEvents(data);
+    const mapped: Template[] = (data as RawTemplate[]).map((t) => ({
+      id: t.id,
+      title: t.title,
+      category: t.category,
+      thumbnail: t.thumbnail,
+      description: t.description,
+      url: t.url,
+      features: t.features ? t.features.map((f) => f.feature_name) : [],
+    }));
+
+    setTemplates(mapped);
+  };
+
+  const fetchEvents = async (search?: string) => {
+    if (!user?.id || !user.token) return;
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user.token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        console.error(
+          "Failed to fetch events:",
+          err?.message || res.statusText
+        );
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+
+      const result = await res.json();
+      const data: EventItem[] = result ?? [];
+      setEvents(data);
+    } catch (error) {
+      console.error("Failed to fetch events:", error);
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddEvent = async () => {
@@ -121,6 +184,7 @@ export default function EventPage() {
       formData.append("folder", "event");
       formData.append("scope", "event");
       formData.append("template_id", "1");
+      formData.append("template_url", String(templates[0].url));
 
       const res = await fetch("/api/upload", {
         method: "POST",
@@ -137,22 +201,30 @@ export default function EventPage() {
       imageUrl = url;
     }
 
-    const { error } = await supabase.from("events").insert([
-      {
-        merchant_id: user.id,
-        name: newEvent.name,
-        description: newEvent.description,
-        location: newEvent.location,
-        start_date: newEvent.start_date,
-        end_date: newEvent.end_date,
-        capacity: parseInt(newEvent.capacity),
-        status: newEvent.status,
-        image_venue: imageUrl,
-      },
-    ]);
+    const req = {
+      merchant_id: user.id,
+      name: newEvent.name,
+      description: newEvent.description,
+      location: newEvent.location,
+      start_date: newEvent.start_date,
+      end_date: newEvent.end_date,
+      capacity: parseInt(newEvent.capacity),
+      status: newEvent.status,
+      image_venue: imageUrl,
+    };
 
-    if (error) {
-      console.error("Failed to insert event:", error.message);
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${user.token}`,
+      },
+      body: JSON.stringify(req),
+    });
+
+    if (!res.ok) {
+      console.log(res);
+      console.error("Failed to insert event:", res);
       return;
     }
 
@@ -364,8 +436,12 @@ export default function EventPage() {
                   })
                 }
               >
-                <option value="true" className="!text-gray-800">Active</option>
-                <option value="false" className="!text-gray-800">Nonactive</option>
+                <option value="true" className="!text-gray-800">
+                  Active
+                </option>
+                <option value="false" className="!text-gray-800">
+                  Nonactive
+                </option>
               </select>
 
               <div className="col-span-12">
