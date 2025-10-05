@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useUser } from "@/context/UserContext";
 import BasicTableOne from "@/components/table/BasicTableOne";
 import Label from "@/components/form/Label";
@@ -57,23 +56,29 @@ export default function OrderPage() {
     if (!user) return;
 
     const fetchEvents = async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("id, name")
-        .eq("merchant_id", user.id)
-        .order("id", { ascending: true });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (error) {
-        console.error("Error fetching events:", error.message);
+      if (!res.ok) {
+        console.error("Failed to fetch events:", res.status, res.statusText);
         return;
       }
 
-      setEventList(
-        (data || []).map((e) => ({
-          value: e.id,
-          label: e.name,
-        }))
-      );
+      const result = await res.json();
+      const data: { id: string; name: string }[] = result;
+
+      const formattedEvents = data.map((event) => ({
+        value: event.id,
+        label: event.name,
+      }));
+
+      setEventList(formattedEvents);
       setEventId(data.length !== 0 ? data[0].id : "");
     };
 
@@ -85,61 +90,51 @@ export default function OrderPage() {
       if (!eventId) return;
       setLoadingOrders(true);
 
-      // Ambil semua orders dengan relasi users
-      const { data, error } = await supabase
-        .from("orders")
-        .select(
-          `
-        id,
-        order_date,
-        status,
-        quantity,
-        price,
-        users (
-          name,
-          email,
-          phone
-        )
-      `
-        )
-        .eq("event_id", eventId)
-        .order("order_date", { ascending: true });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/order-transactions/order?event_id=${eventId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
 
       setLoadingOrders(false);
 
-      if (error) {
-        console.error("Supabase error:", error.message);
+      if (!res.ok) {
+        console.error("Failed to fetch order:", res.status, res.statusText);
         return;
       }
 
-      if (data) {
-        // Mapping hasil orders
-        let mapped: Order[] = data.map((o: any) => ({
-          id: o.id,
-          order_date: o.order_date,
-          status: o.status,
-          quantity: o.quantity,
-          price: o.price,
-          user: {
-            name: o.users?.name ?? "-",
-            email: o.users?.email ?? "-",
-            phone: o.users?.phone ?? "-",
-          },
-        }));
+      const data = await res.json();
 
-        // 🔍 Filtering di client-side
-        if (search && search.trim() !== "") {
-          const term = search.trim().toLowerCase();
-          mapped = mapped.filter(
-            (o) =>
-              o.user.name.toLowerCase().includes(term) ||
-              o.user.email.toLowerCase().includes(term) ||
-              o.user.phone.toLowerCase().includes(term)
-          );
-        }
+      // Mapping hasil orders
+      let mapped: Order[] = data.map((o: any) => ({
+        id: o.id,
+        order_date: o.order_date,
+        status: o.status,
+        quantity: o.quantity,
+        price: o.price,
+        user: {
+          name: o.user?.name ?? "-",
+          email: o.user?.email ?? "-",
+          phone: o.user?.phone ?? "-",
+        },
+      }));
 
-        setOrders(mapped);
+      // 🔍 Filtering di client-side
+      if (search && search.trim() !== "") {
+        const term = search.trim().toLowerCase();
+        mapped = mapped.filter(
+          (o) =>
+            o.user.name.toLowerCase().includes(term) ||
+            o.user.email.toLowerCase().includes(term) ||
+            o.user.phone.toLowerCase().includes(term)
+        );
       }
+
+      setOrders(mapped);
     },
     [eventId]
   );
@@ -155,44 +150,26 @@ export default function OrderPage() {
     setLoadingDetail(true);
     setDetailRows([]);
 
-    const { data, error } = await supabase
-      .from("ticket_details")
-      .select(
-        `
-        id,
-        name,
-        email,
-        phone,
-        gender,
-        ticket_status,
-        order:orders!inner(
-          id,
-          tickets:ticket_id(
-            ticket_type,
-            price
-          )
-        ),
-        checkins(
-          id,
-          checked_in_at
-        )
-      `
-      )
-      // filter berdasarkan order id yang sedang dipilih
-      .eq("order.id", order.id);
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/ticket-details?order_id=${order.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
 
-    if (error) {
-      console.error("Supabase detail error:", error.message);
+    if (!res.ok) {
+      console.error("Detail error:", res.status, res.statusText);
       setLoadingDetail(false);
       return;
     }
+    const data = await res.json();
 
     // Rapikan bentuk data untuk tabel
     const rows: TicketDetailRow[] = (data || []).map((td: any) => {
       const oi = Array.isArray(td.order) ? td.order[0] : td.order;
-      const ticketType =
-        oi?.tickets?.ticket_type ??
-        (Array.isArray(oi?.tickets) ? oi?.tickets?.[0]?.ticket_type : "-");
 
       // relasi checkins biasanya 0..1 (ambil yang pertama bila array)
       const checkedInAt = Array.isArray(td.checkins)
@@ -205,8 +182,8 @@ export default function OrderPage() {
         email: td.email ?? "-",
         phone: td.phone ?? "-",
         gender: td.gender ?? "-",
-        ticketType: ticketType ?? "-",
-        price: typeof oi?.tickets.price === "number" ? oi.tickets.price : null,
+        ticketType: oi?.ticket.ticket_type ?? "-",
+        price: Number(oi?.ticket.price) ?? 0,
         status: td.ticket_status ?? null,
         checkedInAt: checkedInAt,
       };

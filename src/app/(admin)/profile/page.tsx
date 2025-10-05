@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { supabase } from "@/lib/supabase";
 import { useUser } from "@/context/UserContext";
 
 type Merchant = {
@@ -15,7 +14,7 @@ type Merchant = {
 };
 
 export default function ProfilePage() {
-  const { user, setUser } = useUser(); // ✅ context dipakai untuk sync header/sidebar
+  const { user, setUser } = useUser();
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -25,24 +24,30 @@ export default function ProfilePage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  // 🔑 state untuk cek perubahan
   const [isDirty, setIsDirty] = useState(false);
 
-  // ambil data merchant
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
-      const { data, error } = await supabase
-        .from("merchants")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      if (error) {
-        console.error(error);
-        setErr(error.message);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/merchants/${user.id}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        console.error(res.statusText);
+        setErr(res.statusText);
         return;
       }
+
+      const data = await res.json();
+
       setMerchant(data);
       setName(data.name || "");
       setEmail(data.email || "");
@@ -115,26 +120,36 @@ export default function ProfilePage() {
       logo: logoUrl ?? null,
     };
 
-    const { data, error: updError } = await supabase
-      .from("merchants")
-      .update(updates)
-      .eq("id", merchant.id)
-      .select()
-      .single();
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/merchants/${user?.id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+        body: JSON.stringify(updates),
+      }
+    );
 
     setLoading(false);
 
-    if (updError) {
-      console.error("Update failed:", updError.message);
-      setErr(updError.message);
+    if (!res.ok) {
+      console.error("Update failed:", res.status);
+      setErr(res.statusText);
       return;
     }
 
+    const data = await res.json();
+    console.log("data : ", data);
+
     if (data) {
       setMerchant(data);
-      const updatedUser = { ...user, ...data };
+
+      const updatedUser = { ...user, ...data, token: user?.token };
       setUser(updatedUser);
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+
+      sessionStorage.setItem("user", JSON.stringify(updatedUser));
 
       setIsEditing(false);
       setFile(null);
@@ -183,7 +198,9 @@ export default function ProfilePage() {
           )}
 
           <div className="text-center">
-            <div className="text-lg font-semibold text-gray-800 dark:text-white/90">{merchant.name}</div>
+            <div className="text-lg font-semibold text-gray-800 dark:text-white/90">
+              {merchant.name}
+            </div>
             <div className="text-sm text-gray-500">{merchant.email}</div>
             <div className="text-xs text-gray-400">
               Joined {new Date(merchant.created_at).toLocaleDateString()}
@@ -203,7 +220,9 @@ export default function ProfilePage() {
       {isEditing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 p-6 shadow-lg">
-            <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white/90">Edit Merchant</h3>
+            <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-white/90">
+              Edit Merchant
+            </h3>
 
             {err && (
               <div className="mb-3 text-sm text-red-600 bg-red-50 p-2 rounded">
@@ -248,7 +267,9 @@ export default function ProfilePage() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="text-sm text-gray-800 dark:text-white/90">Preview</div>
+                  <div className="text-sm text-gray-800 dark:text-white/90">
+                    Preview
+                  </div>
                 </div>
               )}
 
