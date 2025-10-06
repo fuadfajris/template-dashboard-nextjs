@@ -25,3 +25,59 @@ body {
     text-wrap: balance;
   }
 }
+
+/* ==== QR Reader Custom Style ==== */
+#qr-reader__scan_region img {
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+#qr-reader button,
+#html5-qrcode-anchor-scan-type-change {
+  color: #111827 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 1rem !important;
+  font-weight: 500;
+}
+
+.dark #qr-reader button,
+.dark #html5-qrcode-anchor-scan-type-change {
+  color: #f9fafb !important;
+}
+
+#qr-reader img[alt="Info icon"] {
+  display: none !important;
+}
+
+/* width scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* track (latar belakang scrollbar) */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* thumb (batang scroll) */
+::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 9999px;
+}
+
+/* dark mode */
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+@layer components {
+  .bg-input {
+    @apply border border-gray-200 bg-white text-gray-800 
+           dark:border-gray-800 dark:bg-white/[0.03] dark:text-white/90;
+  }
+}
