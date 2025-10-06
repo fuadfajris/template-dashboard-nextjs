@@ -258,7 +258,11 @@ export default function DashboardPage() {
       );
 
       if (!response.ok) {
-        console.error("Failed to fetch events:", response.status, response.statusText);
+        console.error(
+          "Failed to fetch events:",
+          response.status,
+          response.statusText
+        );
         return;
       }
       const result = await response.json();
@@ -323,9 +327,9 @@ export default function DashboardPage() {
       let femaleCount = 0;
 
       data.forEach((item: any) => {
-        const td = Array.isArray(item.ticket_details)
-          ? item.ticket_details[0]
-          : item.ticket_details;
+        const td = Array.isArray(item.ticket_detail)
+          ? item.ticket_detail[0]
+          : item.ticket_detail;
 
         const gender = td?.gender;
         if (gender?.toLowerCase() === "male") maleCount++;
