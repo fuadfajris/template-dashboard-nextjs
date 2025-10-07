@@ -1,42 +1,27 @@
+import { useUser } from "@/context/UserContext";
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase"; // atau sesuaikan path-nya
 
 export async function POST(req: Request) {
-  const { id } = await req.json();
+  const { user } = useUser();
 
-  const { data: participant, error } = await supabase
-    .from("checkins")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/checkins`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${user?.token}`,
+    },
+    body: JSON.stringify(req),
+  });
 
-  if (error || !participant) {
-    return NextResponse.json(
-      { error: "Peserta tidak ditemukan" },
-      { status: 404 }
-    );
+  if (!res.ok) {
+    console.error("Failed to fetch events:", res.status, res.statusText);
+    return;
   }
+  const data = await res.json();
 
-  if (participant.checked_in) {
-    return NextResponse.json(
-      { error: "Peserta sudah check-in" },
-      { status: 400 }
-    );
-  }
-
-  const { error: updateError } = await supabase
-    .from("checkins")
-    .update({
-      checked_in_at: new Date().toISOString(),
-    })
-    .eq("id", id);
-
-  if (updateError) {
-    return NextResponse.json(
-      { error: "Gagal update check-in" },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ success: true, message: "Checkin Success" });
+  return NextResponse.json({
+    success: true,
+    message: "Checkin Success",
+    data: data,
+  });
 }
