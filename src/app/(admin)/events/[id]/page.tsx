@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,6 +77,8 @@ export default function EventDetailPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [maxHeight, setMaxHeight] = useState<string | undefined>();
   const [isScrollable, setIsScrollable] = useState(false);
+  const [removeVenueImage, setRemoveVenueImage] = useState(false);
+  const [removeHeroImage, setRemoveHeroImage] = useState(false);
 
   // fetch data event & template
   useEffect(() => {
@@ -100,10 +101,12 @@ export default function EventDetailPage() {
       editEvent.capacity !== event.capacity ||
       editEvent.status !== event.status ||
       !!file ||
-      !!heroFile;
+      !!heroFile ||
+      removeVenueImage ||
+      removeHeroImage; // ← tambahan
 
     setIsChanged(hasChanged);
-  }, [editEvent, event, file, heroFile]);
+  }, [editEvent, event, file, heroFile, removeVenueImage, removeHeroImage]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -369,6 +372,35 @@ export default function EventDetailPage() {
     if (!editEvent) return;
     setIsChanged(false);
 
+    // sebelum upload file baru
+    if (removeVenueImage && event?.image_venue) {
+      await fetch("/api/delete-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filePath: event.image_venue,
+          scope: "event",
+          templateId: editEvent?.template_id,
+          templateUrl: templates.find((t) => t.id === editEvent?.template_id)
+            ?.url,
+        }),
+      });
+    }
+
+    if (removeHeroImage && event?.hero_image) {
+      await fetch("/api/delete-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filePath: event.hero_image,
+          scope: "event",
+          templateId: editEvent?.template_id,
+          templateUrl: templates.find((t) => t.id === editEvent?.template_id)
+            ?.url,
+        }),
+      });
+    }
+
     // ✅ Validasi field kosong
     if (
       !editEvent.name.trim() ||
@@ -414,8 +446,8 @@ export default function EventDetailPage() {
       end_date: editEvent.end_date,
       capacity: editEvent.capacity,
       status: editEvent.status,
-      image_venue: imageUrl,
-      hero_image: heroImageUrl,
+      image_venue: removeVenueImage ? null : imageUrl,
+      hero_image: removeHeroImage ? null : heroImageUrl,
     };
 
     const res = await fetch(
@@ -440,6 +472,8 @@ export default function EventDetailPage() {
     fetchEvent(id as string);
     setFile(null);
     setHeroFile(null);
+    setRemoveVenueImage(false);
+    setRemoveHeroImage(false);
     if (venueInputRef.current) venueInputRef.current.value = "";
     if (heroInputRef.current) heroInputRef.current.value = "";
   };
@@ -732,7 +766,7 @@ export default function EventDetailPage() {
 
         {/* Venue Image */}
         <div className="col-span-12 grid grid-cols-12 gap-4 items-start">
-          <div className="col-span-12 lg:col-span-6">
+          <div className="col-span-12 lg:col-span-6 flex flex-col gap-2">
             <input
               type="file"
               ref={venueInputRef}
@@ -740,30 +774,48 @@ export default function EventDetailPage() {
               className="w-full border rounded-lg p-2 mb-2 bg-input"
               onChange={(e) => {
                 const f = e.target.files?.[0] || null;
+                setFile(f);
                 if (f) {
-                  setFile(f);
                   setEditEvent((prev) =>
                     prev
                       ? { ...prev, image_venue: URL.createObjectURL(f) }
                       : null
                   );
+                  setRemoveVenueImage(false); // reset flag hapus
                 }
               }}
             />
           </div>
           <div className="col-span-12 lg:col-span-6 flex items-center">
             {editEvent?.image_venue ? (
-              <Image
-                src={
-                  editEvent.image_venue.startsWith("blob:")
-                    ? editEvent.image_venue
-                    : `/api/upload?file=${editEvent.image_venue}`
-                }
-                alt="Event Preview"
-                width={100}
-                height={100}
-                className="w-auto h-40 object-cover rounded-lg border bg-input"
-              />
+              <div className="relative">
+                <Image
+                  src={
+                    editEvent.image_venue.startsWith("blob:")
+                      ? editEvent.image_venue
+                      : `/api/upload?file=${editEvent.image_venue}`
+                  }
+                  alt="Venue Preview"
+                  width={100}
+                  height={100}
+                  className="w-auto h-40 object-cover rounded-lg border bg-input"
+                />
+                <Button
+                  variant="destructive"
+                  className="absolute top-1 right-1 bg-black text-white"
+                  size="sm"
+                  onClick={() => {
+                    setEditEvent((prev) =>
+                      prev ? { ...prev, image_venue: null } : null
+                    );
+                    setFile(null);
+                    setRemoveVenueImage(true);
+                    if (venueInputRef.current) venueInputRef.current.value = "";
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
             ) : (
               <div className="w-full h-40 flex items-center justify-center border rounded-lg bg-input">
                 No Venue Image
@@ -795,17 +847,34 @@ export default function EventDetailPage() {
           </div>
           <div className="col-span-12 lg:col-span-6 flex items-center">
             {editEvent?.hero_image ? (
-              <Image
-                src={
-                  editEvent.hero_image.startsWith("blob:")
-                    ? editEvent.hero_image
-                    : `/api/upload?file=${editEvent.hero_image}`
-                }
-                alt="Hero Preview"
-                width={100}
-                height={100}
-                className="w-auto h-40 object-cover rounded-lg border bg-input"
-              />
+              <div className="relative">
+                <Image
+                  src={
+                    editEvent.hero_image.startsWith("blob:")
+                      ? editEvent.hero_image
+                      : `/api/upload?file=${editEvent.hero_image}`
+                  }
+                  alt="Hero Preview"
+                  width={100}
+                  height={100}
+                  className="w-auto h-40 object-cover rounded-lg border bg-input"
+                />
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="absolute top-1 right-1 bg-black text-white"
+                  onClick={() => {
+                    setHeroFile(null);
+                    setRemoveHeroImage(true);
+                    setEditEvent((prev) =>
+                      prev ? { ...prev, hero_image: null } : null
+                    );
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
             ) : (
               <div className="w-full h-40 flex items-center justify-center border rounded-lg bg-input">
                 No Hero Image
