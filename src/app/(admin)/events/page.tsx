@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "@/context/UserContext";
 import BasicTableOne from "@/components/table/BasicTableOne";
 import Link from "next/link";
@@ -17,6 +16,7 @@ type EventItem = {
   end_date?: string | null;
   capacity?: number | null;
   status?: boolean;
+  template_id: number;
 };
 
 type EventRow = {
@@ -71,6 +71,7 @@ export default function EventPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [templates, setTemplates] = useState<Template[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     document.title = "Event - MyApp";
@@ -259,6 +260,7 @@ export default function EventPage() {
     const startDate = evt.start_date ? new Date(evt.start_date) : null;
     const endDate = evt.end_date ? new Date(evt.end_date) : null;
     const isPast = endDate ? endDate < now : false;
+    const templateUrl = templates.find((t) => t.id === evt.template_id)?.url;
 
     return {
       index: idx + 1,
@@ -276,6 +278,17 @@ export default function EventPage() {
           >
             Detail
           </Link>
+
+          {templateUrl && (
+            <a
+              href={`${templateUrl}?event_id=${evt.id}&merchant_id=${user?.id}&edit=true`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-blue-600 text-white px-3 py-1 rounded"
+            >
+              Visit
+            </a>
+          )}
         </div>
       ),
     };
@@ -393,25 +406,41 @@ export default function EventPage() {
                   <input
                     type="file"
                     accept="image/*"
+                    ref={fileInputRef}
                     onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                     className="w-full border rounded-lg p-2 mb-2 col-span-12 lg:col-span-6 bg-input"
                   />
                 </div>
                 <div className="col-span-12 lg:col-span-6 flex items-center">
                   {(preview || newEvent.image_venue) && (
-                    <Image
-                      src={
-                        preview
-                          ? preview
-                          : newEvent.image_venue
-                          ? `/api/upload?file=${newEvent.image_venue}`
-                          : "/api/upload?file=/uploads/event/placeholder.jpg"
-                      }
-                      alt="preview"
-                      width={100}
-                      height={100}
-                      className="w-auto h-40 object-cover rounded-lg"
-                    />
+                    <div className="relative">
+                      <Image
+                        src={
+                          preview
+                            ? preview
+                            : newEvent.image_venue
+                            ? `/api/upload?file=${newEvent.image_venue}`
+                            : "/api/upload?file=/uploads/event/placeholder.jpg"
+                        }
+                        alt="preview"
+                        width={100}
+                        height={100}
+                        className="w-auto h-40 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        className="absolute top-0 right-0 p-1 bg-black text-white rounded-lg"
+                        onClick={() => {
+                          setFile(null);
+                          setPreview(null);
+                          setNewEvent({ ...newEvent, image_venue: "" });
+                          if (fileInputRef.current)
+                            fileInputRef.current.value = "";
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -448,7 +477,21 @@ export default function EventPage() {
                 <div className="flex justify-end gap-2">
                   <button
                     className="px-4 py-2 bg-gray-400 text-white rounded"
-                    onClick={() => setShowAddModal(false)}
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setNewEvent({
+                        name: "",
+                        description: "",
+                        location: "",
+                        start_date: "",
+                        end_date: "",
+                        capacity: "",
+                        status: true,
+                        image_venue: "",
+                      });
+                      setFile(null);
+                      setPreview(null);
+                    }}
                   >
                     Cancel
                   </button>
