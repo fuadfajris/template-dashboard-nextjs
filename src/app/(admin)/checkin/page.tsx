@@ -4,7 +4,6 @@ import Label from "@/components/form/Label";
 import Select from "@/components/form/Select";
 import BasicTableOne from "@/components/table/BasicTableOne";
 import { useUser } from "@/context/UserContext";
-import { supabase } from "@/lib/supabase";
 import { Html5QrcodeScanner } from "html5-qrcode";
 import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -68,23 +67,29 @@ export default function ScanPage() {
     if (!user) return;
 
     const fetchEvents = async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select("id, name")
-        .eq("merchant_id", user.id)
-        .order("id", { ascending: true });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (error) {
-        console.error("Error fetching events:", error.message);
+      if (!res.ok) {
+        console.error("Failed to fetch events:", res.status, res.statusText);
         return;
       }
 
-      setEventList(
-        (data || []).map((e) => ({
-          value: e.id,
-          label: e.name,
-        }))
-      );
+      const result = await res.json();
+      const data: { id: string; name: string }[] = result;
+
+      const formattedEvents = data.map((event) => ({
+        value: event.id,
+        label: event.name,
+      }));
+
+      setEventList(formattedEvents);
       setEventId(data.length !== 0 ? data[0].id : "");
     };
 
@@ -96,37 +101,23 @@ export default function ScanPage() {
 
     const fetchCheckins = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("checkins")
-        .select(
-          `
-        id,
-        checked_in_at,
-        ticket_details!inner (
-          id,
-          name,
-          email,
-          phone,
-          age,
-          gender,
-          ticket_status,
-          event_date,
-          orders!inner (
-            id,
-            event_id
-          )
-        )
-      `
-        )
-        .eq("ticket_details.orders.event_id", eventId)
-        .order("id", { ascending: true });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/checkins/all-checkins?event_id=${eventId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
 
       setLoading(false);
 
-      if (error) {
-        console.error("Error fetching checkins:", error.message);
+      if (!res.ok) {
+        console.error("Failed to fetch events:", res.status, res.statusText);
         return;
       }
+      const data = await res.json();
 
       setCheckins(data || []);
     };
@@ -189,9 +180,9 @@ export default function ScanPage() {
                 ]}
                 rows={(checkins || []).map((c, idx) => ({
                   index: idx + 1,
-                  name: c.ticket_details.name ?? "-",
-                  email: c.ticket_details.email ?? "-",
-                  phone: c.ticket_details.phone ?? "-",
+                  name: c.ticket_detail.name ?? "-",
+                  email: c.ticket_detail.email ?? "-",
+                  phone: c.ticket_detail.phone ?? "-",
                   checkin: c.checked_in_at?.split("T")[0] ?? "-",
                 }))}
               />
