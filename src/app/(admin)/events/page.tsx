@@ -94,7 +94,7 @@ export default function EventPage() {
   }, [file]);
 
   const fetchTemplates = async () => {
-    if (!user?.id || !user.token) return;
+    if (!user?.merchant_id || !user.token) return;
 
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/templates`, {
       headers: {
@@ -124,12 +124,12 @@ export default function EventPage() {
   };
 
   const fetchEvents = async (search?: string) => {
-    if (!user?.id || !user.token) return;
+    if (!user?.merchant_id || !user.token) return;
     setLoading(true);
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.merchant_id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -150,7 +150,7 @@ export default function EventPage() {
       }
 
       const result = await res.json();
-      const data: EventItem[] = result ?? [];
+      const data: EventItem[] = Array.isArray(result) ? result : [];
       setEvents(data);
     } catch (error) {
       console.error("Failed to fetch events:", error);
@@ -161,7 +161,7 @@ export default function EventPage() {
   };
 
   const handleAddEvent = async () => {
-    if (!user?.id) return;
+    if (!user?.merchant_id) return;
 
     // ✅ Validasi data wajib
     if (
@@ -203,7 +203,7 @@ export default function EventPage() {
     }
 
     const req = {
-      merchant_id: user.id,
+      merchant_id: user.merchant_id,
       name: newEvent.name,
       description: newEvent.description,
       location: newEvent.location,
@@ -212,9 +212,23 @@ export default function EventPage() {
       capacity: parseInt(newEvent.capacity),
       status: newEvent.status,
       image_venue: imageUrl,
+      user: user
     };
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+    // const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/events`, {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //     Authorization: `Bearer ${user.token}`,
+    //   },
+    //   body: JSON.stringify(req),
+    // });
+
+    // if (!res.ok) {
+    //   console.error("Failed to insert event:", res);
+    //   return;
+    // }
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/activity`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -223,27 +237,21 @@ export default function EventPage() {
       body: JSON.stringify(req),
     });
 
-    if (!res.ok) {
-      console.log(res);
-      console.error("Failed to insert event:", res);
-      return;
-    }
+    // setShowAddModal(false);
+    // setNewEvent({
+    //   name: "",
+    //   description: "",
+    //   location: "",
+    //   start_date: "",
+    //   end_date: "",
+    //   capacity: "",
+    //   status: true,
+    //   image_venue: "",
+    // });
+    // setFile(null);
+    // setPreview(null);
 
-    setShowAddModal(false);
-    setNewEvent({
-      name: "",
-      description: "",
-      location: "",
-      start_date: "",
-      end_date: "",
-      capacity: "",
-      status: true,
-      image_venue: "",
-    });
-    setFile(null);
-    setPreview(null);
-
-    fetchEvents();
+    // fetchEvents();
   };
 
   const columns: { key: keyof EventRow & string; label: string }[] = [
@@ -260,6 +268,7 @@ export default function EventPage() {
     const startDate = evt.start_date ? new Date(evt.start_date) : null;
     const endDate = evt.end_date ? new Date(evt.end_date) : null;
     const isPast = endDate ? endDate < now : false;
+    console.log(evt)
     const templateUrl = templates.find((t) => t.id === evt.template_id)?.url;
 
     return {
@@ -281,7 +290,7 @@ export default function EventPage() {
 
           {templateUrl && (
             <a
-              href={`${templateUrl}?event_id=${evt.id}&merchant_id=${user?.id}&edit=true`}
+              href={`${templateUrl}?event_id=${evt.id}&merchant_id=${user?.merchant_id}&edit=true`}
               target="_blank"
               rel="noopener noreferrer"
               className="bg-blue-600 text-white px-3 py-1 rounded"

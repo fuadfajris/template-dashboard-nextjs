@@ -57,7 +57,7 @@ export default function AddGuestModal({
     if (!isOpen) return;
     const fetchEvent = async () => {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user?.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user?.merchant_id}`,
         {
           headers: {
             "Content-Type": "application/json",

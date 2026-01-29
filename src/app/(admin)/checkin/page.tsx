@@ -23,20 +23,20 @@ export default function ScanPage() {
     if (!data) return;
 
     try {
-      const res = await fetch("/api/checkin", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/checkins`, {
         method: "POST",
-        body: JSON.stringify({ id: data }),
+        body: data,
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
         },
       });
 
-      const result = await res.json();
-
       if (!res.ok) {
         setStatus("error");
-        setMessage(result.error || "Gagal check-in");
+        setMessage("Gagal check-in");
       } else {
+        const result = await res.json();
         setStatus("success");
         setMessage(`Check-in berhasil: ${result.name}`);
       }
@@ -48,27 +48,27 @@ export default function ScanPage() {
   };
 
   useEffect(() => {
-    const scanner = new Html5QrcodeScanner(
-      "qr-reader",
-      { fps: 10, qrbox: 250 },
-      false
-    );
-
-    scanner.render(handleScan, (err) => {
-      console.error("QR Scan error:", err);
-    });
-
-    return () => {
-      scanner.clear().catch(console.error);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!user) return;
+
+    const QrScanner = async () => {
+      const scanner = new Html5QrcodeScanner(
+        "qr-reader",
+        { fps: 10, qrbox: 250 },
+        false
+      );
+
+      scanner.render(handleScan, (err) => {
+        console.error("QR Scan error:", err);
+      });
+
+      return () => {
+        scanner.clear().catch(console.error);
+      };
+    };
 
     const fetchEvents = async () => {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.merchant_id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -94,6 +94,7 @@ export default function ScanPage() {
     };
 
     fetchEvents();
+    QrScanner();
   }, [user]);
 
   useEffect(() => {

@@ -32,7 +32,7 @@ export default function UserDropdown() {
         className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
       >
         <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
-          {user?.logo && (
+          {user?.logo ? (
             <Image
               width={44}
               height={44}
@@ -43,6 +43,10 @@ export default function UserDropdown() {
               }
               alt={user.name}
             />
+          ) : (
+            <div className="w-11 h-11 rounded-full bg-gray-300 flex items-center justify-center font-bold">
+              {user?.name?.charAt(0).toUpperCase()}
+            </div>
           )}
         </span>
 

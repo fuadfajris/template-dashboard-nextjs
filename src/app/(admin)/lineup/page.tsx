@@ -65,10 +65,10 @@ export default function GuestPage() {
   // Fetch event untuk merchant
   useEffect(() => {
     const fetchEvents = async () => {
-      if (!user?.id) return;
+      if (!user?.merchant_id) return;
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.merchant_id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -142,13 +142,11 @@ export default function GuestPage() {
   };
 
   const handleEditClick = (guest: GuestItem) => {
-    console.log(guest)
     setSelectedGuest(guest);
     setEditOpen(true);
   };
 
   const handleDelete = async (guest: GuestItem) => {
-    console.log(guest)
     if (!confirm(`Are you sure you want to delete ${guest.guest.name}?`)) return;
 
     const res = await fetch(

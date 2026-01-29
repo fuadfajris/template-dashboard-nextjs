@@ -82,12 +82,12 @@ export default function EventDetailPage() {
 
   // fetch data event & template
   useEffect(() => {
-    if (!didFetch.current && id && user?.id) {
+    if (!didFetch.current && id && user?.merchant_id) {
       fetchEvent(id as string);
       fetchTemplates();
       didFetch.current = true;
     }
-  }, [id, user?.id]);
+  }, [id, user?.merchant_id]);
 
   useEffect(() => {
     if (!editEvent || !event) return;
@@ -139,7 +139,7 @@ export default function EventDetailPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user.merchant_id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -529,7 +529,7 @@ export default function EventDetailPage() {
 
                   if (!templateUrl) return "http://localhost:3000";
                   const eventId = event?.id ?? "";
-                  const merchantId = user?.id;
+                  const merchantId = user?.merchant_id;
 
                   return `${templateUrl}?event_id=${eventId}&merchant_id=${merchantId}&edit=true`;
                 })()}

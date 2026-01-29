@@ -9,6 +9,8 @@ type User = {
   email: string;
   logo?: string | null;
   logo_path?: string | null;
+  merchant_id: number;
+  role_id: number;
   token?: string;
 };
 

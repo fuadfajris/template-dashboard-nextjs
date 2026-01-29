@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useUser } from "@/context/UserContext";
 
@@ -25,12 +25,14 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [deleteImageFlag, setDeleteImageFlag] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/merchants/${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/merchant-users?merchantUsersId=${user.id}`,
         {
           method: "GET",
           headers: {
@@ -51,13 +53,15 @@ export default function ProfilePage() {
       setMerchant(data);
       setName(data.name || "");
       setEmail(data.email || "");
+      setDeleteImageFlag(false);
+      setPreview(data.logo);
     })();
   }, [user?.id]);
 
   // preview gambar
   useEffect(() => {
     if (!file) {
-      setPreview(null);
+      setPreview(merchant?.logo ?? null);
       return;
     }
     const url = URL.createObjectURL(file);
@@ -68,10 +72,21 @@ export default function ProfilePage() {
   // cek perubahan form
   useEffect(() => {
     if (!merchant) return;
-    const changed =
-      name !== merchant.name || email !== merchant.email || file !== null;
+    let changed = name !== merchant.name || email !== merchant.email;
+
+    if (file) {
+      changed = true;
+    }
+
+    if (deleteImageFlag && merchant.logo) {
+      changed = true;
+    }
+
+    if (deleteImageFlag && !merchant.logo) {
+      changed = false;
+    }
     setIsDirty(changed);
-  }, [name, email, file, merchant]);
+  }, [name, email, file, merchant, deleteImageFlag]);
 
   const handleSave = async () => {
     if (!merchant || !isDirty) return;
@@ -79,6 +94,16 @@ export default function ProfilePage() {
     setErr(null);
 
     let logoUrl = merchant.logo;
+    if (!file && deleteImageFlag && user?.logo) {
+      const res = await fetch("/api/delete-file", {
+        method: "POST",
+        body: JSON.stringify({ filePath: merchant.logo }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!res.ok) throw new Error("Failed to delete image");
+      logoUrl = null;
+    }
 
     if (file) {
       // 1. Hapus logo lama kalau ada
@@ -117,11 +142,11 @@ export default function ProfilePage() {
     const updates: Partial<Merchant> = {
       name,
       email,
-      logo: logoUrl ?? null,
+      logo: logoUrl,
     };
 
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/merchants/${user?.id}`,
+      `${process.env.NEXT_PUBLIC_API_URL}/merchant-users/${user?.id}`,
       {
         method: "PUT",
         headers: {
@@ -141,7 +166,6 @@ export default function ProfilePage() {
     }
 
     const data = await res.json();
-    console.log("data : ", data);
 
     if (data) {
       setMerchant(data);
@@ -247,29 +271,43 @@ export default function ProfilePage() {
               <input
                 type="file"
                 accept="image/*"
+                ref={fileInputRef}
                 onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
                 className="w-full border rounded-lg p-2 mb-2 bg-input"
               />
 
-              {(preview || merchant.logo) && (
-                <div className="flex items-center gap-3 mt-2">
-                  <div className="w-16 h-16 relative rounded-full overflow-hidden border">
-                    <Image
-                      src={
-                        preview
-                          ? preview // local preview
-                          : merchant.logo
-                          ? `/api/upload?file=${merchant.logo}` // ✅ via API
-                          : "/api/upload?file=/uploads/merchant/placeholder.jpg"
-                      }
-                      alt="preview"
-                      fill
-                      className="object-cover"
-                    />
+              {preview && (
+                <div>
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="w-16 h-16 relative rounded-full overflow-hidden border">
+                      <Image
+                        src={
+                          preview
+                            ? preview // local preview
+                            : merchant.logo
+                            ? `/api/upload?file=${merchant.logo}` // ✅ via API
+                            : "/api/upload?file=/uploads/merchant/placeholder.jpg"
+                        }
+                        alt="preview"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="text-sm text-gray-800 dark:text-white/90">
+                      Preview
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-800 dark:text-white/90">
-                    Preview
-                  </div>
+                  <button
+                    className="text-red-500 hover:underline"
+                    onClick={() => {
+                      setFile(null);
+                      setPreview(null);
+                      setDeleteImageFlag(true);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                  >
+                    Delete Image
+                  </button>
                 </div>
               )}
 
@@ -278,9 +316,10 @@ export default function ProfilePage() {
                   onClick={() => {
                     setIsEditing(false);
                     setFile(null);
-                    setPreview(null);
                     setName(merchant.name);
                     setEmail(merchant.email);
+                    setDeleteImageFlag(false);
+                    setPreview(merchant.logo ?? null);
                     setErr(null);
                   }}
                   className="px-4 py-2 rounded border bg-gray-100"

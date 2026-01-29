@@ -29,7 +29,7 @@ export default function LoginPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/merchants/login`,
+        `${process.env.NEXT_PUBLIC_API_URL}/merchant-users/login`,
         {
           method: "POST",
           headers: {
@@ -55,6 +55,8 @@ export default function LoginPage() {
         email: result.user.email,
         logo: result.user.logo ?? null,
         logo_path: result.user.logo_path ?? null,
+        merchant_id: result.user.merchant_id,
+        role_id: result.user.role_id,
         token,
       });
 

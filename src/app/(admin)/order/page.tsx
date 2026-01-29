@@ -57,7 +57,7 @@ export default function OrderPage() {
 
     const fetchEvents = async () => {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.merchant_id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -151,14 +151,14 @@ export default function OrderPage() {
     setDetailRows([]);
 
     const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/ticket-details?order_id=${order.id}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.token}`,
-          },
-        }
-      );
+      `${process.env.NEXT_PUBLIC_API_URL}/ticket-details?order_id=${order.id}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user?.token}`,
+        },
+      }
+    );
 
     if (!res.ok) {
       console.error("Detail error:", res.status, res.statusText);
@@ -171,10 +171,9 @@ export default function OrderPage() {
     const rows: TicketDetailRow[] = (data || []).map((td: any) => {
       const oi = Array.isArray(td.order) ? td.order[0] : td.order;
 
-      // relasi checkins biasanya 0..1 (ambil yang pertama bila array)
-      const checkedInAt = Array.isArray(td.checkins)
-        ? td.checkins[0]?.checked_in_at ?? null
-        : td.checkins?.checked_in_at ?? null;
+      const checkedInAt = Array.isArray(td.checkin)
+        ? td.checkin[0]?.checked_in_at ?? null
+        : td.checkin?.checked_in_at ?? null;
 
       return {
         id: String(td.id),

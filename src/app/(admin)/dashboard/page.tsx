@@ -95,10 +95,10 @@ export default function backup() {
 
   // ambil list event
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.merchant_id) return;
     const fetchEvents = async () => {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/events/merchant/${user.merchant_id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -127,7 +127,7 @@ export default function backup() {
 
   // fetch order & ticket
   useEffect(() => {
-    if (!user?.id || !eventId) return;
+    if (!user?.merchant_id || !eventId) return;
 
     function getDateRange(start: string, end: string) {
       const startDate = new Date(start);
@@ -249,7 +249,7 @@ export default function backup() {
       // GENDER COMPARISON
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/events?event_id=${eventId}&merchant_id=${user.merchant_id}`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -303,7 +303,7 @@ export default function backup() {
 
   // count checkin (jalan setelah totalTickets keisi)
   useEffect(() => {
-    if (!user?.id || !eventId) return;
+    if (!user?.merchant_id || !eventId) return;
 
     const countCheckin = async () => {
       const res = await fetch(

@@ -84,7 +84,6 @@ const othersItems: NavItem[] = [
   //     { name: "Avatar", path: "/avatars" },
   //     { name: "Badge", path: "/badge" },
   //     { name: "Buttons", path: "/buttons" },
-  //     { name: "Images", path: "/images" },
   //     { name: "Videos", path: "/videos" },
   //   ],
   // },
@@ -301,7 +300,7 @@ const Sidebar: React.FC = () => {
         <Link href="/">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
-              {user?.logo && (
+              {user?.logo ? (
                 <div className="flex items-center gap-2">
                   <Image
                     src={
@@ -318,11 +317,20 @@ const Sidebar: React.FC = () => {
                     {user?.name}
                   </span>
                 </div>
+              ) : (
+                <div>
+                  <div className="w-11 h-11 rounded-full bg-gray-300 flex items-center justify-center font-bold">
+                    {user?.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-bold text-lg text-black dark:text-white">
+                    {user?.name}
+                  </span>
+                </div>
               )}
             </>
           ) : (
             <>
-              {user?.logo && (
+              {user?.logo ? (
                 <>
                   <Image
                     src={
@@ -334,8 +342,19 @@ const Sidebar: React.FC = () => {
                     width={32}
                     height={32}
                   />
-                  <span className="font-bold text-sm text-gray-800 dark:text-white/90">{user?.name}</span>
+                  <span className="font-bold text-sm text-gray-800 dark:text-white/90">
+                    {user?.name}
+                  </span>
                 </>
+              ) : (
+                <div>
+                  <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-lg font-bold">
+                    {user?.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="font-bold text-lg text-black dark:text-white">
+                    {user?.name}
+                  </span>
+                </div>
               )}
             </>
           )}
